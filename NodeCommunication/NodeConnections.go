@@ -44,7 +44,3 @@ func Add_new_elevator_node(ip string, TCPport string, nodeIdentity uint8){
 func Set_master_node(n int){
 	
 }
-
-
-
-

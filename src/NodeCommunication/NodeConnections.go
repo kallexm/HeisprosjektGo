@@ -15,8 +15,8 @@ type singleConnection struct{
 	nodeIdentity uint8
 }
 
-//[FFF]Blir vanskelig å impementere en del av funksjonene med maps datatypen
-connectionTable = make(map[uint8]singleConnection)
+
+connectionTable = make([]singleConnection, 0)
 
 
 //[FFF]Trengs denne funksjonen for å initsialisere egen connection?
@@ -25,8 +25,12 @@ func init(){
 }
 
 
-func Get_master_node_IP_and_port() {
-	
+func Get_master_node_IP_and_port() (string, string){
+	for i := 0; i < len(connectionTable); i++ {
+		if connectionTable[i].isMasterNode == true {
+
+		}
+	}
 }
 
 func Get_elevator_node_IP_and_port(n int){

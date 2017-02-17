@@ -1,11 +1,11 @@
 package NodeConnections 
 
 import
-{
+(
 	"fmt"
-}
+)
 
-//[FFF]Denne verdien bør hentes fra en config fil og må være forskjellig for alle nodene.
+
 const NodeID = 1
 
 type singleConnection struct{

@@ -1,7 +1,0 @@
-package NodeCommunicationThread
-
-import
-(
-	"fmt"
-)
-

@@ -3,7 +3,6 @@ package io
 #cgo CFLAGS: -std=c11
 #cgo LDFLAGS: -lcomedi -lm
 #include "io.h"
-#include <stdlib.h>
 */
 import "C"
 
@@ -25,4 +24,8 @@ func Io_read_analog(channel int) int{
 
 func Io_write_analog(channel int, value int) {
 	C.io_write_analog(C.int(channel),C.int(value))
+}
+
+func Io_init()int{
+	return int(C.io_init())
 }

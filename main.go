@@ -3,38 +3,73 @@ package main
 import
 (
 	"fmt"
-	//"./ElevatorControlThread/ElevatorControlThread"
-	"./NodeCommunication/NodeCommunicationThread"
-	"./OrderDistributer/OrderDistributerThread"
+	//"./ElevatorControl/ElevatorControlThread"
+	"./NodeCommunication/NodeConnectionManager"
+	//"./OrderDistributer/OrderDistributerThread"
 	
 )
 
 
-
 func main() {
-	OD_to_NC_Ch := make(chan []byte)
-	NC_to_OD_Ch := make(chan []byte)
-	OD_exit_Ch := make(chan bool)
-	NC_exit_Ch := make(chan bool)
+	OrderDist_to_NodeComm_Ch := make(chan []byte)
+	NodeComm_to_OrderDist_Ch := make(chan []byte)
+	
+	ElevCtrl_to_NodeComm_Ch := make(chan []byte)
+	NodeComm_to_ElevCtrl_Ch := make(chan []byte)
+	
+	OrderDist_exit_Ch := make(chan bool)
+	ElevCtrl_exit_Ch := make(chan bool)
+	NodeComm_exit_Ch := make(chan bool)
+	
+	nodeID := getNodeIDfromStdIO()
 	
 	fmt.Println("Starting main")
 	
-	go NodeCommunicationThread.NC_thr(OD_to_NC_Ch, NC_to_OD_Ch, NC_exit_Ch)
-	go OrderDistributerThread.OD_thr(NC_to_OD_Ch, OD_to_NC_Ch, OD_exit_Ch)
+	
+	go NodeConnectionManager.NodeConnectionManager_thread(OrderDist_to_NodeComm_Ch, NodeComm_to_OrderDist_Ch, 
+														  ElevCtrl_to_NodeComm_Ch , NodeComm_to_ElevCtrl_Ch ,
+														  NodeComm_exit_Ch        , nodeID                  )
+	//go OrderDistributerThread.OrderDist_thr(NodeComm_to_OrderDist_Ch, OrderDist_to_NodeComm_Ch,
+	//										  OrderDist_exit_Ch                                 )
+	//go ElevatorControlThread.ElevatorControl_thread(NodeComm_to_ElevCtrl_Ch, ElevCtrl_to_NodeComm_Ch,
+	//                                                ElevCtrl_exit_Ch                                )
 	
 	
 	
-	if <- NC_exit_Ch {
+	if <- NodeComm_exit_Ch {
 		fmt.Println("Network thread exited normaly")
 	} else {
 		fmt.Println("Notwork thread exited with error")
 	}
 	
-	if <- OD_exit_Ch {
+	if <- OrderDist_exit_Ch {
 		fmt.Println("Order distributer thread exited normaly")
 	} else {
 		fmt.Println("Order distributer thread exited with error")
 	}
+	
+	if <- ElevCtrl_exit_Ch {
+		fmt.Println("Elevator control thread exited normaly")
+	} else {
+		fmt.Println("Elevator control thread exited with error")
+	}
 
 	fmt.Println("exiting main")
 }
+
+
+func getNodeIDfromStdIO() uint8 {
+	var nodeID uint8
+	for {
+		fmt.Printf("%s", "Enter this node's ID (0-255): ")
+		_, err := fmt.Scanln(&nodeID)
+		if err == nil {
+			break
+		}else{
+			fmt.Println(err)
+		}
+	}
+	return nodeID
+}
+	
+	

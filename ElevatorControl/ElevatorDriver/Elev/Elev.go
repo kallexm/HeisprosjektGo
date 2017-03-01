@@ -2,8 +2,8 @@ package Elev
 
 import 
 (
-	"./ioTest"
-	//"./io"
+	//"./ioTest"
+	"./io"
 	"./channels"
 	"errors"
 	"fmt"
@@ -14,12 +14,22 @@ var lamp_channel_map = initLampChannelsMap()
 var button_channel_map = initButtonChannelsMap()
 const N_FLOORS = 4
 const N_BUTTONS = 3
+const MOTOR_SPEED = 2800
 
 type ButtonType int
 const(
 	Up ButtonType = iota
 	Down
 	Comand
+	Door
+)
+
+type MotorDir int
+const(
+	DirDown = iota -1 
+	DirStop
+	DirUp
+
 )  
 
 func initLampChannelsMap() map[ButtonType]map[int]int{
@@ -41,9 +51,9 @@ func getLampChannel(floor int, lamp ButtonType) (int, error) {
 
 func initButtonChannelsMap() map[ButtonType]map[int]int{
 	button_channel_map := map[ButtonType]map[int]int{
-		Up:map[int]int{1:channels.BUTTON_UP1,2:channels.BUTTON_UP2,3:channels.BUTTON_UP3},
-		Down:map[int]int{2:channels.BUTTON_DOWN2,3:channels.BUTTON_DOWN3,4:channels.BUTTON_DOWN4},
-		Comand:map[int]int{1:channels.BUTTON_COMMAND1,2:channels.BUTTON_COMMAND2,3:channels.BUTTON_COMMAND3,4:channels.LIGHT_COMMAND4}}
+		Up:map[int]int{1:channels.BUTTON_UP1,2:channels.BUTTON_UP2,3:channels.BUTTON_UP3,4:channels.BUTTON_UP4},
+		Down:map[int]int{1:channels.BUTTON_DOWN1,2:channels.BUTTON_DOWN2,3:channels.BUTTON_DOWN3,4:channels.BUTTON_DOWN4},
+		Comand:map[int]int{1:channels.BUTTON_COMMAND1,2:channels.BUTTON_COMMAND2,3:channels.BUTTON_COMMAND3,4:channels.BUTTON_COMMAND4}}
 	return button_channel_map
 	
 }
@@ -76,6 +86,18 @@ func ElevInit() error{
 	return nil
 }
 
+func ElevSetMotorDirection(dir MotorDir){
+	if (dir == DirStop){
+		io.Io_write_analog(channels.MOTOR, 0)
+	} else if (dir == DirUp){
+		io.Io_clear_bit(channels.MOTORDIR)
+		io.Io_write_analog(channels.MOTOR, MOTOR_SPEED)
+	} else if (dir == DirDown){
+		io.Io_set_bit(channels.MOTORDIR)
+		io.Io_write_analog(channels.MOTOR, MOTOR_SPEED)
+	}
+}
+
 func ElevSetButtonLamp(button ButtonType, floor int, value int) error{
 	channel, err := getLampChannel(floor, button)
 	if  err != nil{
@@ -93,6 +115,7 @@ func ElevSetFloorIndicator(floor int) error{
 	if floor < 1 || floor > N_FLOORS {
 		return errors.New("Flooor out of bounds error 003")
 	}
+	floor = floor - 1
 	if floor & 0x02 >= 1{
         io.Io_set_bit(channels.LIGHT_FLOOR_IND1);
     } else {

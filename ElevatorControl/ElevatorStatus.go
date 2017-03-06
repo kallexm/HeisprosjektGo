@@ -1,7 +1,0 @@
-package ElevatorStatus
-
-import
-(
-	"fmt"
-)
-

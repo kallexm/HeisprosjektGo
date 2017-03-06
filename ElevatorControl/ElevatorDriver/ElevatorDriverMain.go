@@ -12,6 +12,16 @@ type ButtonPlacement struct{
 	ButtonType Elev.ButtonType
 	Value int 
 }
+
+var buttonStatusMap = initButtonStatusMap()
+
+func initButtonStatusMap() map[Elev.ButtonType]map[int]int {
+	button_channel_map := map[Elev.ButtonType]map[int]int{
+		Elev.Up:map[int]int{1:0,2:0,3:0,4:0},
+		Elev.Down:map[int]int{1:0,2:0,3:0,4:0},
+		Elev.Comand:map[int]int{1:0,2:0,3:0,4:0}}
+	return button_channel_map
+}
 /*
 func main() {
 	err := Elev.ElevInit()
@@ -47,9 +57,12 @@ func pullButons() ButtonPlacement{
 			for b =  0; b < Elev.N_BUTTONS; b ++{
 				if value, err := Elev.ElevGetButtonSignal(b,f); err != nil{
 					fmt.Println("Noeg gikk galt i button pulling err: ", err)
-				} else if value == 1{
+				} else if value == 1 && buttonStatusMap[b][f] != value{
 					buttonPresed := ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
+					buttonStatusMap[b][f] = 1
 					return buttonPresed
+				} else if value == 0{
+					buttonStatusMap[b][f] = 0
 				}
 			} 
 	}

@@ -2,8 +2,8 @@ package ElevatorStatus
 
 import
 (
-	"fmt"
-	"../ElevatorDriver/" 
+	//"fmt"
+	//"../ElevatorDriver/" 
 	"errors"
 )
 
@@ -35,121 +35,121 @@ const(
 
 
 type Order struct{
-	floor int 
-	orderDir dir
+	Floor int 
+	OrderDir dir
 }
 
 type position struct{
-	floor int
-	dir dir
+	Floor int
+	Dir dir
 }
 
 var curentOrder Order;
-var state state;
+var curentState state;
 var unconfirmedOrder []Order;
-var position position;
-var timerDoorchanel chan bool;
-var timerNewUnconfirmedOrderchanel chan bool;
+var curentPosition position;
+var timerDoorchanel chan int;
 
 func GetState() state {
-	return state
+	return curentState
 }
 
-func GetPosition() prosition{
-	return position
+func GetPosition() position{
+	return curentPosition
 }
 
 func GetCurentOrder() Order{
 	return curentOrder
 }
 
+func GetUnconfirmedOrder() Order{
+	return unconfirmedOrder[0]
+}
+
 //Den skall kalles når det blir trykket på en knap i heisen. Orderen skall lagres her til det blir 
 //Bekreftet fra master at orderen er håntert riktig.
-func NewUnconfirmedOrder(newUnconfirmedOrder ElevatorDriverMain.ButtonPlacement){
-	temOrder = {floor:newUnconfirmedOrder.floor,dir:newUnconfirmedOrder.ButtonType}
-	unconfirmedOrder.append(temOrder)
+func NewUnconfirmedOrder(newUnconfirmedOrder ElevatorDriver.ButtonPlacement){
+	tempOrder := Order{floor:newUnconfirmedOrder.Floor,orderDir:int(newUnconfirmedOrder.ButtonType)}
+	unconfirmedOrder = append(unconfirmedOrder,tempOrder)
 	timerNewUnconfirmedOrderchanel <- true
+}
+
+func removeUnconfirmedOrder(){
+	unconfirmedOrder = unconfirmedOrder[1:]
 }
 //kalles om heisen sluter å fungerer
 func SetStateMalfunction(){
-	state = malfunction
+	curentState = malfunction
 }
 //Kalles når modulen får en ny ordere fra master. Retunerer retningen heise må kjøre for å fulføre orderen
 //retunerer en error dersom heisen allerede har en ordere ettersom den kun kan ha 1. 
 //retunerer en boolsk variabel om orderen er øyeblikelig utført. Vi står i riktig etasje
 //vill det reelt kunne skje noen gang? Skall det være tilat?
 func NewCurentOrder(newCurentOrder Order) (dir, error, bool){
-	if curentOrder == Order{}{
-		return nil, errors.New("Kan kun ha en ordere om gangen error 005"), false 
+	if (curentOrder != Order{}){
+		return -2, errors.New("Kan kun ha en ordere om gangen error 005"), false 
 	}
-	if status == doorOpen{
+	if curentState == doorOpen{
 		curentOrder = newCurentOrder
 		return dirNon, nil, false
 	}
-	if newCurentOrder.floor == position.floor && position.dir == dirNon{
-		state = doorOpen
+	if (newCurentOrder.Floor == curentPosition.Floor && curentPosition.Dir == dirNon){
+		curentState = doorOpen
 		//starter en timer
-		timerDoorchanel <-true
+		go timer.TimerThredTwo(timerDoorchanel,2)
 		return dirNon, nil, true
-	} else if newCurentOrder.floor > position.floor{
+	} else if newCurentOrder.Floor > curentPosition.Floor{
 		curentOrder = newCurentOrder
-		state = up
+		curentState = up
+		curentPosition.Dir = dirUp
 		return dirUp, nil, false
 	} else{
 		curentOrder = newCurentOrder
-		state = dirDown
+		curentState = down
+		curentPosition.Dir = dirDown
 		return dirDown, nil, false
 	}
 }
 
 //Kalles når heisen kommer til en ny etasje. retunerer retningen heise skall ta
 //Det skjer heisen har kommet til en etasje den har en ordere på. 
-func NewFloor(floor int) dir{
-	position.floor = floor
-	if floor == curentOrder.floor{
-		position.dir = dirNon
+func NewFloor(floor int) (dir, bool){
+	curentPosition.Floor = floor
+	if floor == curentOrder.Floor{
+		curentPosition.Dir = dirNon
 		curentOrder = Order{}
-		state = doorOpen
+		curentState = doorOpen
 		//starter en timer
-		timerDoorchanel <- true
+		go timer.TimerThredTwo(timerDoorchanel,2)
 		return dirNon, true
 	}
-	return position.dir, false
+	return curentPosition.Dir, false
 }
 
 
 //kalles om timeren til door har timet ut. Retunerer den nye retningen til heisen
-func doorTimeOut()dir{
-	if curentOrder == Order{}{
-		state = idel
+func DoorTimeOut()dir{
+	if (curentOrder == Order{}){
+		curentState = idel
 		return dirNon
-	} else if curentOrder.dir == dirUp{
-		state = dirUp
-		position.dir = dirUp
-		return dirUp
-	} else if curentOrder.dir == dirDown{
-		state = dirDown
-		position.dir = dirDown
-		return dirDown
-	} else if curentOrder.floor > position.floor{
-		state = dirUp
-		position.dir = dirUp
+	} else if curentOrder.Floor > curentPosition.Floor{
+		curentState = up
+		curentPosition.Dir = dirUp
 		return dirUp
 	} else {
-		state = dirDown
-		position.dir = dirDown
+		curentState = down
+		curentPosition.Dir = dirDown
 		return dirDown
 	}
 }
 
 
-func initElevatorStatus(timerDoorch chan bool, timerNewUnconfirmedOrderch chan bool) {
-	timerDoorchanel = timerDoorchanel
-	timerNewUnconfirmedOrderchanel = timerNewUnconfirmedOrderch
-	position = position{}
+func InitElevatorStatus(timerDoorch chan int) {
+	timerDoorchanel = timerDoorch
+	curentPosition = position{}
 	curentOrder = Order{}
-	state = down
-	unconfirmedOrder = Order{}
+	curentState = down
+	unconfirmedOrder = []Order{}
 }
 
 

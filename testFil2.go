@@ -4,11 +4,16 @@ import
 (
 	"fmt"
 	"time"
+	"errors"
 	//"strconv"
 )
 
-func main(){
+var err error
 
+func main(){
+	err = errors.New("This is an error msg")
+	
+	fmt.Println(err)
 }
 
 func getNanoSecTime() int64 {

@@ -1,4 +1,18 @@
 package NodeMessageRelay
+/*
+||	File: NodeMessageRelay
+||
+||	Author:  Andreas Hanssen Moltumyr	
+||	Partner: Martin Mostad
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File:
+||		Contains a goroutine function which gets messages from channels and
+||		forwards them based on lookup in the routing table in NodeRoutingTable
+||		which is maintained by NodeConnectionManager.
+||
+*/
 
 /*[FFF]
 1. Motta meldinger fra heis, orderDistributer og meldinger fra andre noder.
@@ -23,7 +37,7 @@ func NodeMessageRelay_thread (routingTable_Ch chan *NodeRoutingTable.RoutingTabl
 		for i, tableEntry := range (*routingTable_ptr) {
 			select {
 			case receivedMsg := <- tableEntry.Receive_Ch:
-				msgHeader, data, err := MessageFormat.De_Gen_Msg(receivedMsg)
+				msgHeader, data, err := MessageFormat.Decode_msg(receivedMsg)
 				eval_error(err)
 				
 				fmt.Println(msgHeader, data, i)

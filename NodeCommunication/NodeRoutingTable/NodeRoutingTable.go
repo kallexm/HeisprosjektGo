@@ -1,4 +1,17 @@
 package NodeRoutingTable
+/*
+||	File: NodeRoutingTable
+||
+||	Author:  Andreas Hanssen Moltumyr	
+||	Partner: Martin Mostad
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File:
+||		Contains the routing table to be used as lookup by NodeMessageRelay and which should be updated by NodeConnectionManager.
+||		Defines the RoutingtableEntry_t and Routingtable_t types. and functions to interact with these.
+||
+*/
 
 /*[KKK]
 1. Holde en connectionlist som benyttes av NodeMessageRelay og oppdateres av NodeConnectionManager
@@ -10,6 +23,7 @@ import
 (
 	//"fmt"
 )
+
 
 type RoutingEntry_t struct{
 	NodeID uint8

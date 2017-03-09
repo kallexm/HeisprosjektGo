@@ -4,7 +4,7 @@ import
 (
 	//"fmt"
 	"../ElevatorDriver/" 
-	"errors"
+	//"errors"
 	"./timer"
 )
 
@@ -25,9 +25,9 @@ const(
 
 //dirComand virker som et dårlig navn. Diskuter med andreas formatet på ordere. 
 //Hvordan skall det abstraheres bort. 
-//Er det mulig å gjøre dattatypen mere gjenerel så den kan brukkes med position
+//Er det mulig å gjøre dattatypen mere gjenerel så den kan brukkes med Position
 
-type dir int
+type Dir int
 const(
 	DirDown = iota -1 
 	DirNon
@@ -37,25 +37,25 @@ const(
 
 type Order struct{
 	Floor int 
-	OrderDir dir
+	OrderDir Dir
 }
 
-type position struct{
+type Position struct{
 	Floor int
-	Dir dir
+	Dir Dir
 }
 
 var curentOrder Order;
 var curentState state;
 var unconfirmedOrder []Order;
-var curentPosition position;
+var curentPosition Position;
 var timerDoorchanel chan bool;
 
 func GetState() state {
 	return curentState
 }
 
-func GetPosition() position{
+func GetPosition() Position{
 	return curentPosition
 }
 
@@ -70,7 +70,7 @@ func GetUnconfirmedOrder() Order{
 //Den skall kalles når det blir trykket på en knap i heisen. Orderen skall lagres her til det blir 
 //Bekreftet fra master at orderen er håntert riktig.
 func NewUnconfirmedOrder(newUnconfirmedOrder ElevatorDriver.ButtonPlacement){
-	tempOrder := Order{Floor:newUnconfirmedOrder.Floor,OrderDir:dir(newUnconfirmedOrder.ButtonType)}
+	tempOrder := Order{Floor:newUnconfirmedOrder.Floor,OrderDir:Dir(newUnconfirmedOrder.ButtonType)}
 	unconfirmedOrder = append(unconfirmedOrder,tempOrder)
 }
 
@@ -85,10 +85,11 @@ func SetStateMalfunction(){
 //retunerer en error dersom heisen allerede har en ordere ettersom den kun kan ha 1. 
 //retunerer en boolsk variabel om orderen er øyeblikelig utført. Vi står i riktig etasje
 //vill det reelt kunne skje noen gang? Skall det være tilat?
-func NewCurentOrder(newCurentOrder Order) (dir, error, bool){
-	if (curentOrder != Order{}){
+func NewCurentOrder(newCurentOrder Order) (Dir, error, bool){
+	//Fjer denne if statmenten, order distrutubotoren skall kunne overskrive over ordere. 
+	/*if (curentOrder != Order{}){
 		return -2, errors.New("Kan kun ha en ordere om gangen error 005"), false 
-	}
+	}*/
 	if curentState == doorOpen{
 		curentOrder = newCurentOrder
 		return DirNon, nil, false
@@ -113,7 +114,7 @@ func NewCurentOrder(newCurentOrder Order) (dir, error, bool){
 
 //Kalles når heisen kommer til en ny etasje. retunerer retningen heise skall ta
 //Det skjer heisen har kommet til en etasje den har en ordere på. 
-func NewFloor(floor int) (dir, bool){
+func NewFloor(floor int) (Dir, bool){
 	curentPosition.Floor = floor
 	if floor == curentOrder.Floor{
 		curentPosition.Dir = DirNon
@@ -128,7 +129,7 @@ func NewFloor(floor int) (dir, bool){
 
 
 //kalles om timeren til door har timet ut. Retunerer den nye retningen til heisen
-func DoorTimeOut()dir{
+func DoorTimeOut()Dir{
 	if (curentOrder == Order{}){
 		curentState = idel
 		return DirNon
@@ -146,7 +147,7 @@ func DoorTimeOut()dir{
 
 func InitElevatorStatus(timerDoorch chan bool) {
 	timerDoorchanel = timerDoorch
-	curentPosition = position{}
+	curentPosition = Position{}
 	curentOrder = Order{}
 	curentState = down
 	unconfirmedOrder = []Order{}

@@ -36,9 +36,9 @@ const (
 	NEW_ORDER_TO_ELEVATOR //Order stuct fra ElevatorControl/ElevatorStatus
 	SET_LIGHT             //ButtonPlacement struc fra ElevatorControl/ElvatorDriver, vurder nytt nav siden den kan skru av og på 
 	CLEAR_LIGHT 			  
-	ELEVATOR_STATUS_DATA
+	ELEVATOR_STATUS_DATA  //position struct, fra ElevatorControl/ElevatorStatus 	
 	NEW_ELEVATOR_REQUEST  //Order struct fra ElevatorControl/ElevatorStatus 
-	ORDER_FINISHED_BY_ELEVATOR
+	ORDER_FINISHED_BY_ELEVATOR //position struct, fra ElevatorControl/ElevatorStatus 
 	PING
 	NODE_DISCONNECTED
 )

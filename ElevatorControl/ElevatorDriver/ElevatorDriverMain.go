@@ -71,7 +71,7 @@ func pullButons() ButtonPlacement{
 
 
 
-func ElevatorDriverThred(setLightCh <-chan ButtonPlacement, setMotorCh <-chan Elev.MotorDir, getButtonCh chan<- ButtonPlacement, getFloorCh chan<- int) {
+func ElevatorDriverThred(setLightCh <-chan ButtonPlacement, setMotorCh <-chan Elev.MotorDir, getButtonCh chan<- ButtonPlacement, getFloorCh chan<- int, mutex_Ch chan bool) {
 	if err := Elev.ElevInit(); err != nil{
 		fmt.Println(err)
 	}
@@ -89,7 +89,7 @@ func ElevatorDriverThred(setLightCh <-chan ButtonPlacement, setMotorCh <-chan El
 			}
 		case setMotor := <- setMotorCh:
 			Elev.ElevSetMotorDirection(setMotor)
-		default:
+		case <- mutex_Ch:
 			if buttonPresed := pullButons(); buttonPresed != (ButtonPlacement{}){
 				fmt.Println("En knapp ble trykket inn")
 				getButtonCh <- buttonPresed
@@ -97,8 +97,12 @@ func ElevatorDriverThred(setLightCh <-chan ButtonPlacement, setMotorCh <-chan El
 			if curentFloor := Elev.ElevGetFloorSensorSignal(); curentFloor != 0{
 				fmt.Println("Vi kom til en etasje")
 				getFloorCh <- curentFloor
+				/*setMotor := <- setMotorCh
+				//Du trenger denne for å ungå dedlock. Etter en hver gang du skriver til getFloorCh så må du lesse fra setMotorCh. 
+				Elev.ElevSetMotorDirection(setMotor)*/
 			}
 			time.Sleep(time.Second * 1)
+			mutex_Ch <- true
 		}
 	}	
 

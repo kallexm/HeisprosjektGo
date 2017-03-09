@@ -2,17 +2,35 @@ package OrderDistributerThread
 
 import
 (
-	//"fmt"
+	"../../MessageFormat"
+	
+	"fmt"
+	"time"
 )
 
 
 
-func OD_thr(NC_to_OD_Ch <-chan []byte, OD_to_NC_Ch chan<- []byte, OD_exit_Ch chan<- bool) {
-	byteArray := <- NC_to_OD_Ch
-	str := string(byteArray)
-	str = str+"...durp!"
-	byteArray = []byte(str)
-	OD_to_NC_Ch <- byteArray
+func OrderDistributer_thread(from_NodeComm_Ch <-chan []byte, to_NodeComm_Ch chan<- []byte, OrderDist_exit_Ch chan<- bool) {
+	for {
+		select {
+		case msg := <- from_NodeComm_Ch:
+			receivedMsgHeader, data, err := MessageFormat.Decode_msg(msg)
+			CheckError(err)
+			fmt.Println("Message received:")
+			fmt.Println(receivedMsgHeader)
+			fmt.Println(data)
+			
+		default:
+			time.Sleep(100*time.Millisecond)
+		}
+	}
 	
-	OD_exit_Ch <- true
+	OrderDist_exit_Ch <- true
+}
+
+
+func CheckError(err error) {
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
 }

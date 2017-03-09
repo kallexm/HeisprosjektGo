@@ -62,10 +62,9 @@ func NodeConnectionManager_thread(from_OrderDist_Ch <-chan []byte, to_OrderDist_
 	
 	RoutingTable_Ch := make(chan *NodeRoutingTable.RoutingTable_t, 1)
 	routingTable_ptr := NodeRoutingTable.Get_ptr_to_routing_table()
-	routingTable_ptr.Add_new_routing_entries(NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, 			   Receive_Ch: from_OrderDist_Ch,       Send_Ch: to_OrderDist_Ch},
-											 NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsElev: true, Receive_Ch: from_ElevCtrl_Ch,		Send_Ch: to_ElevCtrl_Ch},
-											 NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsNet:  true, Receive_Ch: nodeComm_to_MsgRelay_Ch, Send_Ch: MsgRelay_to_nodeComm_Ch})
-	
+	routingTable_ptr.Add_new_routing_entries(NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsOrderDist: true,	Receive_Ch: from_OrderDist_Ch,       Send_Ch: to_OrderDist_Ch},
+											 NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsElev:      true,	Receive_Ch: from_ElevCtrl_Ch,		 Send_Ch: to_ElevCtrl_Ch},
+											 NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsNet:       true,	Receive_Ch: nodeComm_to_MsgRelay_Ch, Send_Ch: MsgRelay_to_nodeComm_Ch})
 	
 	
 	RoutingTable_Ch <- routingTable_ptr
@@ -98,16 +97,43 @@ func NodeConnectionManager_thread(from_OrderDist_Ch <-chan []byte, to_OrderDist_
 	}
 	
 	for {
+		select {
+		case msg := <- MsgRelay_to_nodeComm_Ch:
+			msgHead, _, err := MessageFormat.Decode_msg(msg)
+			CheckError(err)
 		if isNodeMaster == true {
+			//---------------------------------------------------------------
+			// what to do if the node should be masterNode
 			
+			//---------------------------------------------------------------
 		}
 		
 		if isNodeMaster == false {
+			//---------------------------------------------------------------
+			// what to do if the node is not masterNode
 			
+			//---------------------------------------------------------------
 		}
+		//---------------------------------------------------------------
+		// Stuff that should be done no matter the value of isNodeMaster
+		
+			if msgHead.MsgType == MessageFormat.NODE_DISCONNECTED {
+				replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHead.FromNodeID, From: MessageFormat.NODE_COM, MsgType: MessageFormat.NODE_DISCONNECTED} 
+				msg, _ = MessageFormat.Encode_msg(replyHeader, "")
+				nodeComm_to_MsgRelay_Ch <- msg
+				
+				// Her kan det ha blitt skapt et problem. NodeConnectionManager kan slette connectionen
+				//fra routingtable før NodeMessageRelay får sendt melding tilbake til NodeSingleConnection...
+				
+				routingTable_ptr = <- RoutingTable_Ch
+				_, err := routingTable_ptr.Remove_routing_entry(msgHead.FromNodeID)
+				CheckError(err)
+				RoutingTable_Ch <- routingTable_ptr
+				routingTable_ptr = nil
+			}
+		}
+		//---------------------------------------------------------------
 	}
-
-	
 	NodeComm_exit_Ch <- true
 }
 

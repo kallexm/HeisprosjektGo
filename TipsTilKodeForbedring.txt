@@ -11,5 +11,13 @@ Todo:
 - Samme rekkefølge på pakkene i import statement
 - Kan noen av pakkene gjøres helt synlige (slik at en slipper å skrive pakkenavnet som prefix når en bruker en funksjon fra en annen pakke) ."blabla" for å gjore synlig. Kan gjøre kode mer leselig?!?
 - Legge til en indeling i pakkefilene hvor en merker områder hvor public og private funksjoner ligger og områder hvor tråder ligger, med mer.?!?
+- Legge til parenteser rundt conditions eller la være? Hva er mest leselig?
+
+
 
 Beskrivelse av god "commenting": http://www.cs.utah.edu/~germain/PPS/Topics/commenting.html
+
+
+NB! NB! Før innlevering: Fjern navn og gruppe-nummer fra comments, variabelnavn, filnavn og mapper.
+
+

@@ -20,9 +20,9 @@ package main
 import
 (
 	"fmt"
-	//"./ElevatorControl/ElevatorControlThread"
+	"./ElevatorControl/ElevatorControlThread"
 	"./NodeCommunication/NodeConnectionManager"
-	//"./OrderDistributer/OrderDistributerThread"
+	"./OrderDistributer/OrderDistributerThread"
 	
 )
 
@@ -46,10 +46,11 @@ func main() {
 	go NodeConnectionManager.NodeConnectionManager_thread(OrderDist_to_NodeComm_Ch, NodeComm_to_OrderDist_Ch, 
 														  ElevCtrl_to_NodeComm_Ch , NodeComm_to_ElevCtrl_Ch ,
 														  NodeComm_exit_Ch        , nodeID                  )
-	//go OrderDistributerThread.OrderDist_thr(NodeComm_to_OrderDist_Ch, OrderDist_to_NodeComm_Ch,
-	//										  OrderDist_exit_Ch                                 )
-	//go ElevatorControlThread.ElevatorControl_thread(NodeComm_to_ElevCtrl_Ch, ElevCtrl_to_NodeComm_Ch,
-	//                                                ElevCtrl_exit_Ch                                )
+														  
+	go OrderDistributerThread.OrderDistributer_thread(NodeComm_to_OrderDist_Ch, OrderDist_to_NodeComm_Ch,
+													  OrderDist_exit_Ch                                 )
+	go ElevatorControlThread.ElevatorControl_thread(NodeComm_to_ElevCtrl_Ch, ElevCtrl_to_NodeComm_Ch,
+	                                                ElevCtrl_exit_Ch                                )
 	
 	
 	

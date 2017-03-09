@@ -43,8 +43,8 @@ func HandleConnection(conn net.Conn, thisConnectsToNodeID uint8, from_node_Ch <-
 	
 	for {
 		select {
-			case msg = <- from_node_Ch:
-				_, err = conn.Write(msg)
+		case msg = <- from_node_Ch:
+			_, err = conn.Write(msg)
 		}
 		
 		
@@ -65,7 +65,7 @@ func HandleConnection(conn net.Conn, thisConnectsToNodeID uint8, from_node_Ch <-
 
 
 func sendConnErrorToNodeConnManager(thisConnectsToNodeID uint8, from_node_Ch <-chan []byte, to_node_Ch chan<- []byte) {
-
+	// Her bør det legges inn at en venter og prøver å sende på nytt igjen hvis meldingen bruker for lang tid før en får svar.
 	sendHeader := MessageFormat.MessageHeader_t{To: MessageFormat.NODE_COM, FromNodeID: thisConnectsToNodeID, MsgType: MessageFormat.NODE_DISCONNECTED}
 	sendMsg, _ := MessageFormat.Encode_msg(sendHeader, "")
 	to_node_Ch <- sendMsg

@@ -25,6 +25,7 @@ const (
 	BACKUP
 	ELEVATOR
 	NODE_COM
+	ORDER_DIST
 )
 
 

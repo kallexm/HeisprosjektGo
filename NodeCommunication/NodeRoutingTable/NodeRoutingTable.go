@@ -22,6 +22,7 @@ package NodeRoutingTable
 import
 (
 	//"fmt"
+	"errors"
 )
 
 
@@ -31,6 +32,7 @@ type RoutingEntry_t struct{
 	IsElev bool
 	IsNet bool
 	IsBackup bool
+	IsOrderDist bool
 	IsExtern bool
 	
 	Receive_Ch <-chan []byte
@@ -51,38 +53,33 @@ func (rt *RoutingTable_t) Add_new_routing_entries(newRoutingEntries ...RoutingEn
 	*rt = append(*rt, newRoutingEntries...)
 }
 
-func (rt *RoutingTable_t) Remove_routing_entry(nodeID uint8) {
+func (rt *RoutingTable_t) Remove_routing_entry(nodeID uint8) (uint8, error){
+	var err error
+	err = nil
 	for i := 0; i < len(*rt); i++{
 		if (*rt)[i].IsExtern == true && (*rt)[i].NodeID == nodeID {
 			(*rt)[i] = (*rt)[len(*rt)-1]
 			(*rt)[len(*rt)-1] = RoutingEntry_t{}
 			(*rt) = (*rt)[:len(*rt)-1]
-			break
+			return nodeID, err
 		}
 	}
+	err = errors.New("Connection not in routing table")
+	return 0, err
 }
 
 func (rt *RoutingEntry_t) Get_receive_Ch() <-chan []byte {
 	return rt.Receive_Ch
 }
 
-/*func (rt *RoutingEntry_t) Get_send_Ch() chan<- []byte {
-	return rt.send_Ch
-}*/
+
 
 /*func (rt *RoutingTable_t) Contains_entry_with(nodeID uint8) {
 //connectionTable = make([]singleConnection, 0)
 }*/
 
 /*
-func Get_master_node_IP_and_port() (string, string, error){
-	var err error
-	for i := 0; i < len(connectionTable); i++ {
-		if connectionTable[i].isMasterNode == true {
-			return connectionTable[i].ip, connectionTable[i].TCPport, err
-		}
-	}
-}
+
 
 
 func Set_master_node(n int){

@@ -29,6 +29,10 @@ import
 	"fmt"
 	"os"
 )
+
+
+
+
 var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 
 func NodeMessageRelay_thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
@@ -40,8 +44,37 @@ func NodeMessageRelay_thread (routingTable_Ch chan *NodeRoutingTable.RoutingTabl
 				msgHeader, data, err := MessageFormat.Decode_msg(receivedMsg)
 				eval_error(err)
 				
-				fmt.Println(msgHeader, data, i)
-				/* Implement routing algorithm here */
+				fmt.Println("Message in Relay:", msgHeader, data, i)
+				//-----------------------------------------------------------------
+				// Implement routing algorithm here
+				for i, searchTableEntry := range (*routingTable_ptr) {
+					if msgHeader.To == MessageFormat.MASTER && searchTableEntry.IsMaster == true {
+						searchTableEntry.Send_Ch <- receivedMsg
+						break
+						
+					}else if msgHeader.To == MessageFormat.ELEVATOR && (searchTableEntry.IsElev == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
+						searchTableEntry.Send_Ch <- receivedMsg
+						break
+						
+					}else if msgHeader.To == MessageFormat.BACKUP && (searchTableEntry.IsBackup == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
+						searchTableEntry.Send_Ch <- receivedMsg
+						break
+						
+					}else if msgHeader.To == MessageFormat.NODE_COM && searchTableEntry.IsNet == true {
+						searchTableEntry.Send_Ch <- receivedMsg
+						break
+						
+					}else if msgHeader.To == MessageFormat.ORDER_DIST && searchTableEntry.IsOrderDist == true {
+						searchTableEntry.Send_Ch <- receivedMsg
+						break
+						
+					}else if i == len(*routingTable_ptr){
+						// Drop package if it doesn't match any of the above filters/masks
+						fmt.Println("Package with header", msgHeader, "dropped because of no matching filters!")
+					}
+				}
+				
+				//-----------------------------------------------------------------
 			default:
 			}
 		}
@@ -57,3 +90,4 @@ func eval_error(err error) {
 		os.Exit(0)
 	}
 }
+

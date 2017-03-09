@@ -19,38 +19,52 @@ package main
 
 import
 (
-	"fmt"
 	"./ElevatorControl/ElevatorControlThread"
 	"./NodeCommunication/NodeConnectionManager"
 	"./OrderDistributer/OrderDistributerThread"
 	
+	"fmt"
 )
 
 
 func main() {
-	OrderDist_to_NodeComm_Ch := make(chan []byte)
-	NodeComm_to_OrderDist_Ch := make(chan []byte)
+	OrderDist_to_NodeComm_Ch 	:= make(chan []byte)
+	NodeComm_to_OrderDist_Ch 	:= make(chan []byte)
+	OrderDist_NodeComm_Mutex_Ch := make(chan bool, 1)
+	OrderDist_NodeComm_Mutex_Ch <- true
 	
-	ElevCtrl_to_NodeComm_Ch := make(chan []byte)
-	NodeComm_to_ElevCtrl_Ch := make(chan []byte)
+	ElevCtrl_to_NodeComm_Ch 	:= make(chan []byte)
+	NodeComm_to_ElevCtrl_Ch 	:= make(chan []byte)
+	ElevCtrl_NodeComm_Mutex_Ch	:= make(chan bool, 1)
+	ElevCtrl_NodeComm_Mutex_Ch 	<- true
 	
-	OrderDist_exit_Ch := make(chan bool)
-	ElevCtrl_exit_Ch := make(chan bool)
-	NodeComm_exit_Ch := make(chan bool)
+	OrderDist_exit_Ch	:= make(chan bool)
+	ElevCtrl_exit_Ch	:= make(chan bool)
+	NodeComm_exit_Ch	:= make(chan bool)
 	
+
 	nodeID := getNodeIDfromStdIO()
-	
 	fmt.Println("Starting main")
 	
 	
-	go NodeConnectionManager.NodeConnectionManager_thread(OrderDist_to_NodeComm_Ch, NodeComm_to_OrderDist_Ch, 
-														  ElevCtrl_to_NodeComm_Ch , NodeComm_to_ElevCtrl_Ch ,
-														  NodeComm_exit_Ch        , nodeID                  )
+	go NodeConnectionManager.Thread(	OrderDist_to_NodeComm_Ch	,
+										NodeComm_to_OrderDist_Ch	,
+										OrderDist_NodeComm_Mutex_Ch	,
+										ElevCtrl_to_NodeComm_Ch		,
+										NodeComm_to_ElevCtrl_Ch		,
+										ElevCtrl_NodeComm_Mutex_Ch	,
+										NodeComm_exit_Ch			,
+										nodeID 						)
 														  
-	go OrderDistributerThread.OrderDistributer_thread(NodeComm_to_OrderDist_Ch, OrderDist_to_NodeComm_Ch,
-													  OrderDist_exit_Ch                                 )
-	go ElevatorControlThread.ElevatorControl_thread(NodeComm_to_ElevCtrl_Ch, ElevCtrl_to_NodeComm_Ch,
-	                                                ElevCtrl_exit_Ch                                )
+	go OrderDistributerThread.Thread(	NodeComm_to_OrderDist_Ch	,
+									 	OrderDist_to_NodeComm_Ch	,
+									 	OrderDist_NodeComm_Mutex_Ch ,
+									 	OrderDist_exit_Ch       	)
+
+	go ElevatorControlThread.Thread(	NodeComm_to_ElevCtrl_Ch		,
+										ElevCtrl_to_NodeComm_Ch		,
+										ElevCtrl_NodeComm_Mutex_Ch	,
+	                                	ElevCtrl_exit_Ch        	)
 	
 	
 	

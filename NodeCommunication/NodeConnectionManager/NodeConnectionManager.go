@@ -38,7 +38,7 @@ import
 	
 )
 
-const broadCastToPort = "60002"
+const broadCastToPort 	= "60002"
 const broadCastFromPort = "60022"
 var isNodeMaster bool
 
@@ -52,23 +52,47 @@ var isNodeMaster bool
 ||			3. Starts to listen for new nodes on the network if it could not find an other node to connect to.
 ||			4. Updates the routing table when necessary.
 */
-func NodeConnectionManager_thread(from_OrderDist_Ch <-chan []byte, to_OrderDist_Ch chan<- []byte,
-								  from_ElevCtrl_Ch  <-chan []byte, to_ElevCtrl_Ch  chan<- []byte,
-								  NodeComm_exit_Ch  chan<- bool  , nodeID uint8                 ) {
+
+
+func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
+			to_OrderDist_Ch 			chan<- 	[]byte	,
+			OrderDist_NodeComm_Mutex_Ch chan 	bool	,
+		  	from_ElevCtrl_Ch  			<-chan 	[]byte	,
+		  	to_ElevCtrl_Ch  			chan<- 	[]byte	,
+		  	ElevCtrl_NodeComm_Mutex_Ch	chan 	bool	,
+		  	NodeComm_exit_Ch  			chan<- 	bool 	,
+		  	nodeID 						uint8           ) {
 	
 	//Setting up initial starting
-	nodeComm_to_MsgRelay_Ch := make(chan []byte)
-	MsgRelay_to_nodeComm_Ch := make(chan []byte)
+	nodeComm_to_MsgRelay_Ch		:= make(chan []byte)
+	MsgRelay_to_nodeComm_Ch 	:= make(chan []byte)
+	nodeComm_MsgRelay_Mutex_Ch	:= make(chan bool, 1)
+	nodeComm_MsgRelay_Mutex_Ch 	<- true
 	
-	RoutingTable_Ch := make(chan *NodeRoutingTable.RoutingTable_t, 1)
-	routingTable_ptr := NodeRoutingTable.Get_ptr_to_routing_table()
-	routingTable_ptr.Add_new_routing_entries(NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsOrderDist: true,	Receive_Ch: from_OrderDist_Ch,       Send_Ch: to_OrderDist_Ch},
-											 NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsElev:      true,	Receive_Ch: from_ElevCtrl_Ch,		 Send_Ch: to_ElevCtrl_Ch},
-											 NodeRoutingTable.RoutingEntry_t{NodeID: nodeID, IsNet:       true,	Receive_Ch: nodeComm_to_MsgRelay_Ch, Send_Ch: MsgRelay_to_nodeComm_Ch})
+	RoutingTable_Ch		:= make(chan *NodeRoutingTable.RoutingTable_t, 1)
+	routingTable_ptr	:= NodeRoutingTable.Get_reference_to_routing_table()
+	routingTable_ptr.Add_new_routing_entries(NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
+																			 	IsOrderDist:	true 						,
+																			 	Receive_Ch:		from_OrderDist_Ch			,
+																			 	Send_Ch: 		to_OrderDist_Ch				,
+																			 	Mutex_Ch:		OrderDist_NodeComm_Mutex_Ch	}	,
+
+											 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
+											 								 	IsElev:			true 						,
+											 								 	Receive_Ch:		from_ElevCtrl_Ch			,
+											 								 	Send_Ch:		to_ElevCtrl_Ch				,
+											 								 	Mutex_Ch:		ElevCtrl_NodeComm_Mutex_Ch	}	,
+
+											 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
+											 									IsNet:			true 						,
+											 									Receive_Ch:		nodeComm_to_MsgRelay_Ch		,
+											 									Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
+											 									Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
 	
 	
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
+
 	go NodeMessageRelay.NodeMessageRelay_thread(RoutingTable_Ch)
 	
 	
@@ -80,16 +104,23 @@ func NodeConnectionManager_thread(from_OrderDist_Ch <-chan []byte, to_OrderDist_
 		CheckError(err)
 		isNodeMaster = true
 	}else{
-		to_newConnection_Ch := make(chan []byte)
-		from_newConnection_Ch := make(chan []byte)
+		to_newConnection_Ch		:= make(chan []byte)
+		from_newConnection_Ch	:= make(chan []byte)
+		newConnection_Mutex_Ch	:= make(chan bool, 1)
+		newConnection_Mutex_Ch 	<- true
 		
-		go NodeSingleConnection.HandleConnection(conn, IDofNewConnectedNode, to_newConnection_Ch, from_newConnection_Ch)
+		go NodeSingleConnection.HandleConnection(	conn 					,
+													IDofNewConnectedNode	,
+													to_newConnection_Ch		,
+													from_newConnection_Ch	,
+													newConnection_Mutex_Ch 	)
 		
-		newRoutingEntry := NodeRoutingTable.RoutingEntry_t{NodeID: IDofNewConnectedNode,
-														   IsExtern: true,
-														   IsMaster: true,
-														   Receive_Ch: from_newConnection_Ch,
-														   Send_Ch: to_newConnection_Ch}
+		newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: 	IDofNewConnectedNode	,
+														   	IsExtern: 	true 					,
+														   	IsMaster: 	true 					,
+														   	Receive_Ch: from_newConnection_Ch	,
+														   	Send_Ch: 	to_newConnection_Ch		}
+		
 		routingTable_ptr = <- RoutingTable_Ch
 		routingTable_ptr.Add_new_routing_entries(newRoutingEntry)
 		RoutingTable_Ch <- routingTable_ptr
@@ -101,36 +132,46 @@ func NodeConnectionManager_thread(from_OrderDist_Ch <-chan []byte, to_OrderDist_
 		case msg := <- MsgRelay_to_nodeComm_Ch:
 			msgHead, _, err := MessageFormat.Decode_msg(msg)
 			CheckError(err)
-		if isNodeMaster == true {
-			//---------------------------------------------------------------
-			// what to do if the node should be masterNode
-			
-			//---------------------------------------------------------------
-		}
-		
-		if isNodeMaster == false {
-			//---------------------------------------------------------------
-			// what to do if the node is not masterNode
-			
-			//---------------------------------------------------------------
-		}
-		//---------------------------------------------------------------
-		// Stuff that should be done no matter the value of isNodeMaster
-		
-			if msgHead.MsgType == MessageFormat.NODE_DISCONNECTED {
-				replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHead.FromNodeID, From: MessageFormat.NODE_COM, MsgType: MessageFormat.NODE_DISCONNECTED} 
-				msg, _ = MessageFormat.Encode_msg(replyHeader, "")
-				nodeComm_to_MsgRelay_Ch <- msg
-				
-				// Her kan det ha blitt skapt et problem. NodeConnectionManager kan slette connectionen
-				//fra routingtable før NodeMessageRelay får sendt melding tilbake til NodeSingleConnection...
-				
-				routingTable_ptr = <- RoutingTable_Ch
-				_, err := routingTable_ptr.Remove_routing_entry(msgHead.FromNodeID)
+			if isNodeMaster == true {
+				//---------------------------------------------------------------
+				// what to do if the node should be masterNode
+
+				// Setting up UDP listener
+				listenerAddress, err := net.ResolveUDPAddr("udp", net.JoinHostPort(GetLocalIP(), broadCastToPort))
 				CheckError(err)
-				RoutingTable_Ch <- routingTable_ptr
-				routingTable_ptr = nil
+				bCastListener, err := net.ListenUDP("udp", listenerAddress)
+				CheckError(err)
+				defer bCastListener.Close()
+
+				
+
+
+				//---------------------------------------------------------------
 			}
+			
+			if isNodeMaster == false {
+				//---------------------------------------------------------------
+				// what to do if the node is not masterNode
+				
+				//---------------------------------------------------------------
+			}
+			//---------------------------------------------------------------
+			// Stuff that should be done no matter the value of isNodeMaster
+			
+				if msgHead.MsgType == MessageFormat.NODE_DISCONNECTED {
+					replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHead.FromNodeID, From: MessageFormat.NODE_COM, MsgType: MessageFormat.NODE_DISCONNECTED} 
+					msg, _ = MessageFormat.Encode_msg(replyHeader, "")
+					nodeComm_to_MsgRelay_Ch <- msg
+					
+					// Her kan det ha blitt skapt et problem. NodeConnectionManager kan slette connectionen
+					//fra routingtable før NodeMessageRelay får sendt melding tilbake til NodeSingleConnection...
+					
+					routingTable_ptr = <- RoutingTable_Ch
+					_, err := routingTable_ptr.Remove_routing_entry(msgHead.FromNodeID)
+					CheckError(err)
+					RoutingTable_Ch <- routingTable_ptr
+					routingTable_ptr = nil
+				}
 		}
 		//---------------------------------------------------------------
 	}
@@ -145,20 +186,20 @@ func NodeConnectionManager_thread(from_OrderDist_Ch <-chan []byte, to_OrderDist_
 func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8, error){
 
 	// Setting up a UDP broadcast socket
-	bCastToAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort("255.255.255.255", broadCastToPort))
+	bCastToAddr, err	:= net.ResolveUDPAddr("udp", net.JoinHostPort("255.255.255.255"	, broadCastToPort	))
 	CheckError(err)
-	bCastFromAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(GetLocalIP(), broadCastFromPort))
+	bCastFromAddr, err 	:= net.ResolveUDPAddr("udp", net.JoinHostPort(GetLocalIP()		, broadCastFromPort	))
 	CheckError(err)
-	bCastConn, err := net.DialUDP("udp", bCastFromAddr, bCastToAddr)
+	bCastConn, err 		:= net.DialUDP("udp", bCastFromAddr, bCastToAddr)
 	CheckError(err)
 	defer bCastConn.Close()
 	
 	// Setting up a TCP listener socket
-	listenForMasterAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(GetLocalIP(), "0"))
+	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(GetLocalIP(), "0"))
 	CheckError(err)
-	listenForMaster, err := net.ListenTCP("tcp", listenForMasterAddr)
+	listener, err 		:= net.ListenTCP("tcp", listenForMasterAddr)
 	CheckError(err)
-	defer listenForMaster.Close()
+	defer listener.Close()
 	
 	// Make broadcast message
 	bCastMsg := make([]byte, 0)
@@ -168,35 +209,32 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 	}else{
 		bCastMsg = append(bCastMsg, 0x1)
 	}
-	bCastMsg = append(bCastMsg, []byte(listenForMaster.Addr().String())...)
+	bCastMsg = append(bCastMsg, []byte(listener.Addr().String())...)
 	
-	// [KKK] Debug prints
-	//fmt.Println(bCastMsg)
-	//fmt.Println(string(bCastMsg))
 	
 	// Try to connect
 	i := 0
 	for {
-		_, err := bCastConn.Write(bCastMsg)
+		_, err 			:= bCastConn.Write(bCastMsg)
 		CheckError(err)
-		err = listenForMaster.SetDeadline(time.Now().Add(1*time.Second))
+		err 			 = listener.SetDeadline(time.Now().Add(1*time.Second))
 		CheckError(err)
-		tcpConnFromMaster, err := listenForMaster.Accept()
+		tcpConn, err 	:= listener.Accept()
 		//CheckError(err)
 		
 		if err == nil {
-			buffer := make([]byte, 256)
-			err = tcpConnFromMaster.SetReadDeadline(time.Now().Add(1*time.Second))
+			buffer 		:= make([]byte, 256)
+			err 	 	 = tcpConn.SetReadDeadline(time.Now().Add(1*time.Second))
 			CheckError(err)
-			_, err := tcpConnFromMaster.Read(buffer)
+			_, err 		:= tcpConn.Read(buffer)
 			CheckError(err)
 			msgHeader, _, err := MessageFormat.Decode_msg(buffer)
 			CheckError(err)	
 			
-			return tcpConnFromMaster, msgHeader.FromNodeID, err
+			return tcpConn, msgHeader.FromNodeID, err
 			
 		}else if i >= 2 {
-			return tcpConnFromMaster, uint8(0), err
+			return tcpConn, uint8(0), err
 		}
 		i++
 	}

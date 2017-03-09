@@ -10,7 +10,11 @@ import
 
 
 
-func OrderDistributer_thread(from_NodeComm_Ch <-chan []byte, to_NodeComm_Ch chan<- []byte, OrderDist_exit_Ch chan<- bool) {
+func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
+			to_NodeComm_Ch 				chan<- 	[]byte	,
+			OrderDist_NodeComm_Mutex_Ch chan 	bool	,
+			OrderDist_exit_Ch 			chan<- 	bool	) {
+	
 	for {
 		select {
 		case msg := <- from_NodeComm_Ch:

@@ -46,7 +46,7 @@ func NodeMessageRelay_thread (routingTable_Ch chan *NodeRoutingTable.RoutingTabl
 				
 				fmt.Println("Message in Relay:", msgHeader, data, i)
 				//-----------------------------------------------------------------
-				// Implement routing algorithm here
+				// Routing Entries 
 				for i, searchTableEntry := range (*routingTable_ptr) {
 					if msgHeader.To == MessageFormat.MASTER && searchTableEntry.IsMaster == true {
 						searchTableEntry.Send_Ch <- receivedMsg

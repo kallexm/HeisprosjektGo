@@ -27,25 +27,26 @@ import
 
 
 type RoutingEntry_t struct{
-	NodeID uint8
-	IsMaster bool
-	IsElev bool
-	IsNet bool
-	IsBackup bool
+	NodeID 		uint8
+	IsMaster 	bool
+	IsElev 		bool
+	IsNet 		bool
+	IsBackup 	bool
 	IsOrderDist bool
-	IsExtern bool
+	IsExtern 	bool
 	
-	Receive_Ch <-chan []byte
-	Send_Ch    chan<- []byte
+	Receive_Ch 	<-chan 	[]byte
+	Send_Ch    	chan<- 	[]byte
+	Mutex_Ch	chan 	bool
+
 }
 
 type RoutingTable_t []RoutingEntry_t
 
-
 var routingTable RoutingTable_t
 
 
-func Get_ptr_to_routing_table() (*RoutingTable_t) {
+func Get_reference_to_routing_table() (*RoutingTable_t) {
 	return &routingTable
 }
 

@@ -134,7 +134,7 @@ func genMsg(to string, toNodeID uint8, from string, fromNodeID uint8, msgType st
 	return message, err
 }
 
-func DegenerateMessage(message []byte) (MessageHeader, string, error) {
+func DeGenMsg(message []byte) (MessageHeader, string, error) {
 	var msgHead MessageHeader
 	var err error
 	var data string
@@ -147,8 +147,4 @@ func DegenerateMessage(message []byte) (MessageHeader, string, error) {
 	
 	return msgHead, data, err
 }
-
-
-
-
 

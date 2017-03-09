@@ -9,10 +9,13 @@ import
 
 var msg string
 
-func ElevatorControl_thread(from_NodeComm_Ch <-chan []byte, to_NodeComm_Ch chan<- []byte, ElevCtrl_exit_Ch chan<- bool) {
+func Thread(from_NodeComm_Ch 			<-chan []byte	,
+			to_NodeComm_Ch 				chan<- []byte	,
+			ElevCtrl_NodeComm_Mutex_Ch	chan 	bool	,
+			ElevCtrl_exit_Ch 			chan<-	bool	) {
 	for {
 		
-		_, err := fmt.Scanf("%q", &msg)
+		_, err := fmt.Scanln(&msg)
 		CheckError(err)
 		
 		

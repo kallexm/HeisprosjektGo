@@ -91,8 +91,8 @@ func ElevatorDriverThred(setLightCh <-chan ButtonPlacement, setMotorCh <-chan El
 			Elev.ElevSetMotorDirection(setMotor)
 		default:
 			if buttonPresed := pullButons(); buttonPresed != (ButtonPlacement{}){
-			fmt.Println("En knapp ble trykket inn")
-			getButtonCh <- buttonPresed
+				fmt.Println("En knapp ble trykket inn")
+				getButtonCh <- buttonPresed
 			}
 			if curentFloor := Elev.ElevGetFloorSensorSignal(); curentFloor != 0{
 				fmt.Println("Vi kom til en etasje")

@@ -3,8 +3,9 @@ package ElevatorStatus
 import
 (
 	//"fmt"
-	//"../ElevatorDriver/" 
+	"../ElevatorDriver/" 
 	"errors"
+	"./timer"
 )
 
 
@@ -28,9 +29,9 @@ const(
 
 type dir int
 const(
-	dirDown = iota -1 
-	dirNon
-	dirUp
+	DirDown = iota -1 
+	DirNon
+	DirUp
 )
 
 
@@ -48,7 +49,7 @@ var curentOrder Order;
 var curentState state;
 var unconfirmedOrder []Order;
 var curentPosition position;
-var timerDoorchanel chan int;
+var timerDoorchanel chan bool;
 
 func GetState() state {
 	return curentState
@@ -69,9 +70,8 @@ func GetUnconfirmedOrder() Order{
 //Den skall kalles når det blir trykket på en knap i heisen. Orderen skall lagres her til det blir 
 //Bekreftet fra master at orderen er håntert riktig.
 func NewUnconfirmedOrder(newUnconfirmedOrder ElevatorDriver.ButtonPlacement){
-	tempOrder := Order{floor:newUnconfirmedOrder.Floor,orderDir:int(newUnconfirmedOrder.ButtonType)}
+	tempOrder := Order{Floor:newUnconfirmedOrder.Floor,OrderDir:dir(newUnconfirmedOrder.ButtonType)}
 	unconfirmedOrder = append(unconfirmedOrder,tempOrder)
-	timerNewUnconfirmedOrderchanel <- true
 }
 
 func removeUnconfirmedOrder(){
@@ -91,23 +91,23 @@ func NewCurentOrder(newCurentOrder Order) (dir, error, bool){
 	}
 	if curentState == doorOpen{
 		curentOrder = newCurentOrder
-		return dirNon, nil, false
+		return DirNon, nil, false
 	}
-	if (newCurentOrder.Floor == curentPosition.Floor && curentPosition.Dir == dirNon){
+	if (newCurentOrder.Floor == curentPosition.Floor && curentPosition.Dir == DirNon){
 		curentState = doorOpen
 		//starter en timer
 		go timer.TimerThredTwo(timerDoorchanel,2)
-		return dirNon, nil, true
+		return DirNon, nil, true
 	} else if newCurentOrder.Floor > curentPosition.Floor{
 		curentOrder = newCurentOrder
 		curentState = up
-		curentPosition.Dir = dirUp
-		return dirUp, nil, false
+		curentPosition.Dir = DirUp
+		return DirUp, nil, false
 	} else{
 		curentOrder = newCurentOrder
 		curentState = down
-		curentPosition.Dir = dirDown
-		return dirDown, nil, false
+		curentPosition.Dir = DirDown
+		return DirDown, nil, false
 	}
 }
 
@@ -116,12 +116,12 @@ func NewCurentOrder(newCurentOrder Order) (dir, error, bool){
 func NewFloor(floor int) (dir, bool){
 	curentPosition.Floor = floor
 	if floor == curentOrder.Floor{
-		curentPosition.Dir = dirNon
+		curentPosition.Dir = DirNon
 		curentOrder = Order{}
 		curentState = doorOpen
 		//starter en timer
 		go timer.TimerThredTwo(timerDoorchanel,2)
-		return dirNon, true
+		return DirNon, true
 	}
 	return curentPosition.Dir, false
 }
@@ -131,20 +131,20 @@ func NewFloor(floor int) (dir, bool){
 func DoorTimeOut()dir{
 	if (curentOrder == Order{}){
 		curentState = idel
-		return dirNon
+		return DirNon
 	} else if curentOrder.Floor > curentPosition.Floor{
 		curentState = up
-		curentPosition.Dir = dirUp
-		return dirUp
+		curentPosition.Dir = DirUp
+		return DirUp
 	} else {
 		curentState = down
-		curentPosition.Dir = dirDown
-		return dirDown
+		curentPosition.Dir = DirDown
+		return DirDown
 	}
 }
 
 
-func InitElevatorStatus(timerDoorch chan int) {
+func InitElevatorStatus(timerDoorch chan bool) {
 	timerDoorchanel = timerDoorch
 	curentPosition = position{}
 	curentOrder = Order{}

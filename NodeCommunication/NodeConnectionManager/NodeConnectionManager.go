@@ -35,7 +35,6 @@ import
 	"fmt"
 	"net"
 	"time"
-	
 )
 
 const broadCastToPort 	= "60002"
@@ -63,7 +62,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 		  	NodeComm_exit_Ch  			chan<- 	bool 	,
 		  	nodeID 						uint8           ) {
 	
-	//Setting up initial starting
+	// Initialization of channels and routingTable
 	nodeComm_to_MsgRelay_Ch		:= make(chan []byte)
 	MsgRelay_to_nodeComm_Ch 	:= make(chan []byte)
 	nodeComm_MsgRelay_Mutex_Ch	:= make(chan bool, 1)
@@ -89,11 +88,10 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 											 									Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
 											 									Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
 	
-	
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
 
-	go NodeMessageRelay.NodeMessageRelay_thread(RoutingTable_Ch)
+	go NodeMessageRelay.Thread(RoutingTable_Ch)
 	
 	
 	// Start connection Sequence
@@ -101,51 +99,55 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	
 	conn, IDofNewConnectedNode, err := connect_to_other_Node(isNodeMaster, nodeID)
 	if err != nil {
-		CheckError(err)
+		checkError(err)
 		isNodeMaster = true
 	}else{
-		to_newConnection_Ch		:= make(chan []byte)
-		from_newConnection_Ch	:= make(chan []byte)
-		newConnection_Mutex_Ch	:= make(chan bool, 1)
-		newConnection_Mutex_Ch 	<- true
-		
-		go NodeSingleConnection.HandleConnection(	conn 					,
-													IDofNewConnectedNode	,
-													to_newConnection_Ch		,
-													from_newConnection_Ch	,
-													newConnection_Mutex_Ch 	)
-		
-		newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: 	IDofNewConnectedNode	,
-														   	IsExtern: 	true 					,
-														   	IsMaster: 	true 					,
-														   	Receive_Ch: from_newConnection_Ch	,
-														   	Send_Ch: 	to_newConnection_Ch		}
-		
-		routingTable_ptr = <- RoutingTable_Ch
-		routingTable_ptr.Add_new_routing_entries(newRoutingEntry)
-		RoutingTable_Ch <- routingTable_ptr
-		routingTable_ptr = nil
+		newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: IDofNewConnectedNode	,
+															IsExtern: true					,
+															IsMaster: true					}
+		handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
 	}
 	
 	for {
-		select {
-		case msg := <- MsgRelay_to_nodeComm_Ch:
-			msgHead, _, err := MessageFormat.Decode_msg(msg)
-			CheckError(err)
+		fmt.Println("IntoForPlay")
+		time.Sleep(1*time.Second)
+		
 			if isNodeMaster == true {
 				//---------------------------------------------------------------
-				// what to do if the node should be masterNode
+				// what to do if the node should be masterNode on the network
 
 				// Setting up UDP listener
-				listenerAddress, err := net.ResolveUDPAddr("udp", net.JoinHostPort(GetLocalIP(), broadCastToPort))
-				CheckError(err)
+				listenerAddress, err := net.ResolveUDPAddr("udp", net.JoinHostPort(getLocalIP(), broadCastToPort))
+				checkError(err)
 				bCastListener, err := net.ListenUDP("udp", listenerAddress)
-				CheckError(err)
+				checkError(err)
 				defer bCastListener.Close()
-
 				
-
-
+				for {
+					bCastListener.SetReadDeadline(time.Now().Add(1*time.Second))
+					checkError(err)
+					buffer := make([]byte, 64)
+					_, err := bCastListener.Read(buffer)
+					checkError(err)
+					nodeIDofBcaster := uint8(buffer[0])
+					tcpListenerAddrOfBcaster := string(buffer[2:])
+					
+					
+					conn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
+					checkError(err)
+					if err == nil {
+						nodeIDmsg := make([]byte, 1)
+						nodeIDmsg = append(nodeIDmsg, byte(nodeID))
+						_, err := conn.Write(nodeIDmsg)
+						checkError(err)
+						newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: nodeIDofBcaster	,
+																			IsExtern: true			,
+																			IsBackup: true			}
+						handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
+					}
+					
+				
+				}
 				//---------------------------------------------------------------
 			}
 			
@@ -158,8 +160,14 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			//---------------------------------------------------------------
 			// Stuff that should be done no matter the value of isNodeMaster
 			
+			select {
+			case msg := <- MsgRelay_to_nodeComm_Ch:
+				msgHead, _, err := MessageFormat.Decode_msg(msg)
+				checkError(err)
 				if msgHead.MsgType == MessageFormat.NODE_DISCONNECTED {
-					replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHead.FromNodeID, From: MessageFormat.NODE_COM, MsgType: MessageFormat.NODE_DISCONNECTED} 
+					replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHead.FromNodeID				,
+																 From: MessageFormat.NODE_COM				,
+																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
 					msg, _ = MessageFormat.Encode_msg(replyHeader, "")
 					nodeComm_to_MsgRelay_Ch <- msg
 					
@@ -168,13 +176,16 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 					
 					routingTable_ptr = <- RoutingTable_Ch
 					_, err := routingTable_ptr.Remove_routing_entry(msgHead.FromNodeID)
-					CheckError(err)
+					checkError(err)
 					RoutingTable_Ch <- routingTable_ptr
 					routingTable_ptr = nil
 				}
-		}
+			default:
+				// Do Noting
+			}
 		//---------------------------------------------------------------
 	}
+	
 	NodeComm_exit_Ch <- true
 }
 
@@ -187,19 +198,19 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 
 	// Setting up a UDP broadcast socket
 	bCastToAddr, err	:= net.ResolveUDPAddr("udp", net.JoinHostPort("255.255.255.255"	, broadCastToPort	))
-	CheckError(err)
-	bCastFromAddr, err 	:= net.ResolveUDPAddr("udp", net.JoinHostPort(GetLocalIP()		, broadCastFromPort	))
-	CheckError(err)
+	checkError(err)
+	bCastFromAddr, err 	:= net.ResolveUDPAddr("udp", net.JoinHostPort(getLocalIP()		, broadCastFromPort	))
+	checkError(err)
 	bCastConn, err 		:= net.DialUDP("udp", bCastFromAddr, bCastToAddr)
-	CheckError(err)
+	checkError(err)
 	defer bCastConn.Close()
 	
 	// Setting up a TCP listener socket
-	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(GetLocalIP(), "0"))
-	CheckError(err)
-	listener, err 		:= net.ListenTCP("tcp", listenForMasterAddr)
-	CheckError(err)
-	defer listener.Close()
+	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(getLocalIP(), "0"))
+	checkError(err)
+	tcpListener, err 		:= net.ListenTCP("tcp", listenAddr)
+	checkError(err)
+	defer tcpListener.Close()
 	
 	// Make broadcast message
 	bCastMsg := make([]byte, 0)
@@ -209,27 +220,27 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 	}else{
 		bCastMsg = append(bCastMsg, 0x1)
 	}
-	bCastMsg = append(bCastMsg, []byte(listener.Addr().String())...)
+	bCastMsg = append(bCastMsg, []byte(tcpListener.Addr().String())...)
 	
 	
 	// Try to connect
 	i := 0
 	for {
 		_, err 			:= bCastConn.Write(bCastMsg)
-		CheckError(err)
-		err 			 = listener.SetDeadline(time.Now().Add(1*time.Second))
-		CheckError(err)
-		tcpConn, err 	:= listener.Accept()
+		checkError(err)
+		err 			 = tcpListener.SetDeadline(time.Now().Add(1*time.Second))
+		checkError(err)
+		tcpConn, err 	:= tcpListener.Accept()
 		//CheckError(err)
 		
 		if err == nil {
 			buffer 		:= make([]byte, 256)
 			err 	 	 = tcpConn.SetReadDeadline(time.Now().Add(1*time.Second))
-			CheckError(err)
+			checkError(err)
 			_, err 		:= tcpConn.Read(buffer)
-			CheckError(err)
+			checkError(err)
 			msgHeader, _, err := MessageFormat.Decode_msg(buffer)
-			CheckError(err)	
+			checkError(err)	
 			
 			return tcpConn, msgHeader.FromNodeID, err
 			
@@ -242,7 +253,7 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 
 
 
-func CheckError(err error) {
+func checkError(err error) {
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
@@ -250,7 +261,7 @@ func CheckError(err error) {
 
 
 
-func GetLocalIP() string {
+func getLocalIP() string {
 	address, err := net.InterfaceAddrs()
 	if err != nil {
 		return ""
@@ -264,3 +275,37 @@ func GetLocalIP() string {
 	}
 	return ""
 }
+
+
+
+func handleNewTcpConnection(conn 				net.Conn								,
+							newRoutingEntry 	NodeRoutingTable.RoutingEntry_t			,
+							RoutingTable_Ch 	chan *NodeRoutingTable.RoutingTable_t	) {
+							
+	var routingTable_ptr *NodeRoutingTable.RoutingTable_t	
+							
+	to_newConnection_Ch		:= make(chan []byte)
+	from_newConnection_Ch	:= make(chan []byte)
+	newConnection_Mutex_Ch	:= make(chan bool, 1)
+	newConnection_Mutex_Ch 	<- true
+	// Blir channelene værende i routingTable'et selv om plassen de
+	// lages går ut av scope, når det gjøres på denne måten?!?
+	
+	newRoutingEntry.Receive_Ch 	= from_newConnection_Ch
+	newRoutingEntry.Send_Ch 	= to_newConnection_Ch
+	newRoutingEntry.Mutex_Ch	= newConnection_Mutex_Ch
+	
+	IDofNewConnectedNode := newRoutingEntry.NodeID
+	
+	go NodeSingleConnection.HandleConnection(	conn 					,
+												IDofNewConnectedNode	,
+												to_newConnection_Ch		,
+												from_newConnection_Ch	,
+												newConnection_Mutex_Ch 	)
+	
+	routingTable_ptr = <- RoutingTable_Ch
+	routingTable_ptr.Add_new_routing_entries(newRoutingEntry)
+	RoutingTable_Ch <- routingTable_ptr
+	routingTable_ptr = nil
+}
+		

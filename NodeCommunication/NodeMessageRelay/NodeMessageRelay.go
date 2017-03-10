@@ -35,7 +35,7 @@ import
 
 var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 
-func NodeMessageRelay_thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
+func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 	for {
 		routingTable_ptr = <- routingTable_Ch
 		for i, tableEntry := range (*routingTable_ptr) {

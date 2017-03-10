@@ -34,41 +34,64 @@ import
 	
 )
 
-const readDeadlineTime = 10*time.Millisecond
+const readDeadlineTime 	= 50*time.Millisecond
+const writeDeadlineTime = 50*time.Millisecond
 
 
-func HandleConnection(conn net.Conn, thisConnectsToNodeID uint8, from_node_Ch <-chan []byte, to_node_Ch chan<- []byte) {
+func HandleConnection(	conn 							net.Conn,
+						thisConnectsToNodeID 			uint8	,
+						from_node_Ch 			<-chan 	[]byte	,
+						to_node_Ch 				chan<- 	[]byte	,
+						connection_Mutex_Ch		chan 	bool	) {
 	var msg []byte
 	var err error
 	
 	for {
 		select {
 		case msg = <- from_node_Ch:
-			_, err = conn.Write(msg)
+			_ 		= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
+			_, err	= conn.Write(msg)
+			if err != nil {
+				fmt.Println("A connection error accured")
+				fmt.Println(err)
+				sendConnErrorToNodeConnManager(thisConnectsToNodeID, from_node_Ch, to_node_Ch)
+				conn.Close()
+			}
+		default:
+			_ 		= conn.SetReadDeadline(time.Now().Add(readDeadlineTime))
+			_, err	= conn.Read(msg)
+			if err == nil {
+				to_node_Ch <- msg
+			}else if e, ok := err.(net.Error); ok && !e.Timeout() {
+				fmt.Println("A connection error accured")
+				fmt.Println(e)
+				sendConnErrorToNodeConnManager(thisConnectsToNodeID, from_node_Ch, to_node_Ch)
+				conn.Close()
+			}
 		}
 		
 		
-		_ = conn.SetReadDeadline(time.Now().Add(readDeadlineTime))
-		_, err = conn.Read(msg)
-		if err == nil {
-			to_node_Ch <- msg
-		}else if e, ok := err.(net.Error); ok && !e.Timeout() {
-			fmt.Println("A connection error accured")
-			fmt.Println(e)
-			sendConnErrorToNodeConnManager(thisConnectsToNodeID, from_node_Ch, to_node_Ch)
-			conn.Close()
-		}
+		
 	}
 	
 	/* Implement the notes above */
 }
 
 
-func sendConnErrorToNodeConnManager(thisConnectsToNodeID uint8, from_node_Ch <-chan []byte, to_node_Ch chan<- []byte) {
+func sendConnErrorToNodeConnManager(thisConnectsToNodeID 			uint8,
+									from_node_Ch 			<-chan []byte,
+									to_node_Ch 				chan<- []byte) {
 	// Her bør det legges inn at en venter og prøver å sende på nytt igjen hvis meldingen bruker for lang tid før en får svar.
-	sendHeader := MessageFormat.MessageHeader_t{To: MessageFormat.NODE_COM, FromNodeID: thisConnectsToNodeID, MsgType: MessageFormat.NODE_DISCONNECTED}
+	sendHeader := MessageFormat.MessageHeader_t{To: 		MessageFormat.NODE_COM			,
+												FromNodeID: thisConnectsToNodeID			,
+												MsgType: 	MessageFormat.NODE_DISCONNECTED	}
 	sendMsg, _ := MessageFormat.Encode_msg(sendHeader, "")
-	to_node_Ch <- sendMsg
+	
+	select {
+	case to_node_Ch <- sendMsg:
+		
+	}
+	
 	
 	receiveMsg := <- from_node_Ch
 	for {

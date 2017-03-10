@@ -1,5 +1,14 @@
 package OrderDistributerThread
 
+/*
+1. Holde orden på en kø per heis som er koblet på nettverket.
+2. En liste med kø objekter.
+3. Dynamisk alokere nye kø er hvis nye noder kobler seg på.
+4. Hver kø må ha en bit som sier om køen er aktiv eller ikke.
+5. Når en heis disconnect'er vil NodeConnectionManager si ifra om at noden har forsvunnet fra nettverket og da må aktiv kø bit'en deaktiveres.
+6. Køen tas vare på, men brukes ikke før den samme noden har koblet seg på igjen og NodeConnectionManager har sagt fra om dette. (Det må i samme tilfelle synkroniseres en ny kø.)
+*/
+
 import
 (
 	"../../MessageFormat"

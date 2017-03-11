@@ -132,6 +132,7 @@ func NewFloor(floor int) (Dir, bool){
 func DoorTimeOut()Dir{
 	if (curentOrder == Order{}){
 		curentState = idel
+		curentPosition.Dir = DirNon
 		return DirNon
 	} else if curentOrder.Floor > curentPosition.Floor{
 		curentState = up

@@ -27,7 +27,8 @@ import
 	"../../MessageFormat"
 	
 	"fmt"
-	"os"
+	//"os"
+	"time"
 )
 
 
@@ -36,47 +37,78 @@ import
 var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 
 func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
+	fmt.Println("Starting messageRelay")
 	for {
+		time.Sleep(time.Millisecond*300)
 		routingTable_ptr = <- routingTable_Ch
+
+		//fmt.Printf("%+v", *routingTable_ptr)
+		//fmt.Println()
+
 		for i, tableEntry := range (*routingTable_ptr) {
 			select {
-			case receivedMsg := <- tableEntry.Receive_Ch:
-				msgHeader, data, err := MessageFormat.Decode_msg(receivedMsg)
-				eval_error(err)
-				
-				fmt.Println("Message in Relay:", msgHeader, data, i)
-				//-----------------------------------------------------------------
-				// Routing Entries 
-				for i, searchTableEntry := range (*routingTable_ptr) {
-					if msgHeader.To == MessageFormat.MASTER && searchTableEntry.IsMaster == true {
-						searchTableEntry.Send_Ch <- receivedMsg
-						break
+			case tableEntry.Mutex_Ch <- true:
+				continueFor := true
+				for continueFor {
+					select {
+					case receivedMsg := <- tableEntry.Receive_Ch:
+						msgHeader, data, err := MessageFormat.Decode_msg(receivedMsg)
+
+						if false {
+							eval_error(err)
+							fmt.Println(tableEntry)
+							fmt.Println("Message in Relay:", msgHeader, data, i)
+						}
 						
-					}else if msgHeader.To == MessageFormat.ELEVATOR && (searchTableEntry.IsElev == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
-						searchTableEntry.Send_Ch <- receivedMsg
-						break
-						
-					}else if msgHeader.To == MessageFormat.BACKUP && (searchTableEntry.IsBackup == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
-						searchTableEntry.Send_Ch <- receivedMsg
-						break
-						
-					}else if msgHeader.To == MessageFormat.NODE_COM && searchTableEntry.IsNet == true {
-						searchTableEntry.Send_Ch <- receivedMsg
-						break
-						
-					}else if msgHeader.To == MessageFormat.ORDER_DIST && searchTableEntry.IsOrderDist == true {
-						searchTableEntry.Send_Ch <- receivedMsg
-						break
-						
-					}else if i == len(*routingTable_ptr){
-						// Drop package if it doesn't match any of the above filters/masks
-						fmt.Println("Package with header", msgHeader, "dropped because of no matching filters!")
+						for j, searchTableEntry := range (*routingTable_ptr) {
+							if false {
+							eval_error(err)
+							fmt.Println(tableEntry)
+							fmt.Println("Message in Relay:", msgHeader, data, j)
+							}
+							//-----------------------------------------------------------------
+							// Routing Entries
+							if msgHeader.To == MessageFormat.MASTER && searchTableEntry.IsMaster == true {
+								searchTableEntry.Send_Ch <- receivedMsg
+								break
+								
+							}else if msgHeader.To == MessageFormat.ELEVATOR && (searchTableEntry.IsElev == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
+								searchTableEntry.Send_Ch <- receivedMsg
+								break
+								
+							}else if msgHeader.To == MessageFormat.BACKUP && (searchTableEntry.IsBackup == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
+								searchTableEntry.Send_Ch <- receivedMsg
+								break
+								
+							}else if msgHeader.To == MessageFormat.NODE_COM && searchTableEntry.IsNet == true {
+								searchTableEntry.Send_Ch <- receivedMsg
+								break
+								
+							}else if msgHeader.To == MessageFormat.ORDER_DIST && searchTableEntry.IsOrderDist == true {
+								searchTableEntry.Send_Ch <- receivedMsg
+								break
+								
+							}else if j == len(*routingTable_ptr){
+								// Drop package if it doesn't match any of the above filters/masks
+								fmt.Println("Package with header", msgHeader, "dropped because of no matching filters!")
+							}
+							//-----------------------------------------------------------------
+						}
+					default:
+						// Do nothing
+					}
+					select {
+					case <- tableEntry.Mutex_Ch:
+						continueFor = false
+					default:
+						// Do nothing
 					}
 				}
-				
-				//-----------------------------------------------------------------
 			default:
+				// Do nothing
 			}
+			
+			
 		}
 		routingTable_Ch <- routingTable_ptr
 		routingTable_ptr = nil
@@ -86,8 +118,8 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 
 func eval_error(err error) {
 	if err != nil {
-		fmt.Println("Error: ", err)
-		os.Exit(0)
+		fmt.Println(err)
+		//os.Exit(0)
 	}
 }
 

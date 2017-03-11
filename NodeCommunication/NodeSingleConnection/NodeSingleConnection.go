@@ -34,8 +34,8 @@ import
 	
 )
 
-const readDeadlineTime 	= 50*time.Millisecond
-const writeDeadlineTime = 50*time.Millisecond
+const readDeadlineTime 	= 1000*time.Millisecond
+const writeDeadlineTime = 1000*time.Millisecond
 
 
 func HandleConnection(	conn 							net.Conn,
@@ -43,68 +43,58 @@ func HandleConnection(	conn 							net.Conn,
 						from_node_Ch 			<-chan 	[]byte	,
 						to_node_Ch 				chan<- 	[]byte	,
 						connection_Mutex_Ch		chan 	bool	) {
-	var msg []byte
-	var err error
-	
+	var receiveMsg 	[]byte
+	var sendMsg		[]byte
+	//var receiveErr 	error
+	var sendErr		error
+	var connBroke 			= false
+	var connBrokeMsgSent 	= false
+
+	forLoop:
 	for {
+		time.Sleep(time.Millisecond*400)
 		select {
-		case msg = <- from_node_Ch:
+		case sendMsg = <- from_node_Ch:
+			fmt.Println("Melding over nett:", string(sendMsg))
 			_ 		= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
-			_, err	= conn.Write(msg)
-			if err != nil {
-				fmt.Println("A connection error accured")
-				fmt.Println(err)
-				sendConnErrorToNodeConnManager(thisConnectsToNodeID, from_node_Ch, to_node_Ch)
-				conn.Close()
+			fmt.Println(sendMsg)
+			_, sendErr	= conn.Write(sendMsg)
+			fmt.Println(sendErr)
+			if sendErr != nil {
+				fmt.Println(sendErr)
+				connBroke = true
 			}
-		default:
+
+			if connBroke == true && connBrokeMsgSent == true {
+				head, _, _ := MessageFormat.Decode_msg(sendMsg)
+				if head.MsgType == MessageFormat.NODE_DISCONNECTED && head.From == MessageFormat.NODE_COM {
+					conn.Close()
+					break forLoop
+				}
+			}
+
+		case <-connection_Mutex_Ch:
 			_ 		= conn.SetReadDeadline(time.Now().Add(readDeadlineTime))
-			_, err	= conn.Read(msg)
-			if err == nil {
-				to_node_Ch <- msg
-			}else if e, ok := err.(net.Error); ok && !e.Timeout() {
-				fmt.Println("A connection error accured")
+			n, receiveErr	:= conn.Read(receiveMsg)
+			fmt.Println("receiveMsg:", receiveMsg, "receiveErr:", receiveErr, "n:", n)
+			if receiveErr == nil && n > 0 {
+				to_node_Ch <- receiveMsg
+			}else if e, ok := receiveErr.(net.Error); ok && !e.Timeout() {
 				fmt.Println(e)
-				sendConnErrorToNodeConnManager(thisConnectsToNodeID, from_node_Ch, to_node_Ch)
-				conn.Close()
+				connBroke = true
 			}
-		}
-		
-		
-		
-	}
-	
-	/* Implement the notes above */
-}
 
-
-func sendConnErrorToNodeConnManager(thisConnectsToNodeID 			uint8,
-									from_node_Ch 			<-chan []byte,
-									to_node_Ch 				chan<- []byte) {
-	// Her bør det legges inn at en venter og prøver å sende på nytt igjen hvis meldingen bruker for lang tid før en får svar.
-	sendHeader := MessageFormat.MessageHeader_t{To: 		MessageFormat.NODE_COM			,
+			if connBroke == true {
+				fmt.Println("A connection error accured")
+				sendHeader := MessageFormat.MessageHeader_t{To: 		MessageFormat.NODE_COM			,
 												FromNodeID: thisConnectsToNodeID			,
 												MsgType: 	MessageFormat.NODE_DISCONNECTED	}
-	sendMsg, _ := MessageFormat.Encode_msg(sendHeader, "")
-	
-	select {
-	case to_node_Ch <- sendMsg:
-		
-	}
-	
-	
-	receiveMsg := <- from_node_Ch
-	for {
-		receiveHeader, _, _ := MessageFormat.Decode_msg(receiveMsg)
-		if receiveHeader.MsgType == MessageFormat.NODE_DISCONNECTED && receiveHeader.From == MessageFormat.NODE_COM {
-			break
+				connBrokeMsg, _ := MessageFormat.Encode_msg(sendHeader, "")
+				to_node_Ch <- connBrokeMsg
+				connBrokeMsgSent = true
+			}
+			connection_Mutex_Ch <- true
 		}
-		// Messages can be dropped here
 	}
+
 }
-
-
-
-
-
-

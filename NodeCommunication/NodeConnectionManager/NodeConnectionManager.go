@@ -39,11 +39,12 @@ import
 
 const broadCastToPort 	= "60002"
 const broadCastFromPort = "60022"
+var useLocalIP = false
 var isNodeMaster bool
 
 
 /*
-|| NodeConnectionManager_thread(...) should be called as a goroutine.
+|| Thread(...) should be called as a goroutine.
 ||		It manages the connections a single elevator node has to all the other elevator nodes which is connected.
 ||		This function:
 ||			1. Sets up the routing table stored in file/package NodeRoutingTable with inital routing entries.
@@ -65,8 +66,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	// Initialization of channels and routingTable
 	nodeComm_to_MsgRelay_Ch		:= make(chan []byte)
 	MsgRelay_to_nodeComm_Ch 	:= make(chan []byte)
-	nodeComm_MsgRelay_Mutex_Ch	:= make(chan bool, 1)
-	nodeComm_MsgRelay_Mutex_Ch 	<- true
+	nodeComm_MsgRelay_Mutex_Ch	:= make(chan bool)
 	
 	RoutingTable_Ch		:= make(chan *NodeRoutingTable.RoutingTable_t, 1)
 	routingTable_ptr	:= NodeRoutingTable.Get_reference_to_routing_table()
@@ -97,53 +97,65 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	// Start connection Sequence
 	isNodeMaster = false
 	
+	fmt.Println("Connecting to remote node...")
 	conn, IDofNewConnectedNode, err := connect_to_other_Node(isNodeMaster, nodeID)
 	if err != nil {
 		checkError(err)
+		fmt.Println("Failed to connect to remote node...")
 		isNodeMaster = true
+		err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
+		fmt.Println("Node with ID", nodeID, "changed to master")
+		checkError(err)
 	}else{
 		newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: IDofNewConnectedNode	,
 															IsExtern: true					,
 															IsMaster: true					}
 		handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
+		fmt.Println("Connection to node with ID", IDofNewConnectedNode, "was successful")
 	}
 	
+	fmt.Println("IntoForPlay")
 	for {
-		fmt.Println("IntoForPlay")
 		time.Sleep(1*time.Second)
 		
 			if isNodeMaster == true {
-				//---------------------------------------------------------------
-				// what to do if the node should be masterNode on the network
+				//---------------------------------------------------------------net.JoinHostPort(getLocalIP(useLocalIP), broadCastToPort)
+				// What to do if the node should be masterNode on the network
 
 				// Setting up UDP listener
-				listenerAddress, err := net.ResolveUDPAddr("udp", net.JoinHostPort(getLocalIP(), broadCastToPort))
+				fmt.Println("Start to listen for other nodes...")
+				listenerAddress, err := net.ResolveUDPAddr("udp", ":"+string(broadCastToPort))
 				checkError(err)
 				bCastListener, err := net.ListenUDP("udp", listenerAddress)
+				fmt.Println("Address of bCastListener:", bCastListener.LocalAddr())
 				checkError(err)
 				defer bCastListener.Close()
 				
 				for {
 					bCastListener.SetReadDeadline(time.Now().Add(1*time.Second))
 					checkError(err)
-					buffer := make([]byte, 64)
-					_, err := bCastListener.Read(buffer)
-					checkError(err)
+					buffer := make([]byte, 32)
+					_, _, err := bCastListener.ReadFromUDP(buffer)
+					//fmt.Println("Received ",string(buffer[0:n]), " from ",addr)
+					//fmt.Println("Error is", err)
+					//checkError(err)
 					nodeIDofBcaster := uint8(buffer[0])
 					tcpListenerAddrOfBcaster := string(buffer[2:])
 					
 					
-					conn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
-					checkError(err)
+					//conn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
+					conn, err := net.Dial("tcp", tcpListenerAddrOfBcaster)
+					//checkError(err)
 					if err == nil {
 						nodeIDmsg := make([]byte, 1)
-						nodeIDmsg = append(nodeIDmsg, byte(nodeID))
+						nodeIDmsg[0] = byte(nodeID)
 						_, err := conn.Write(nodeIDmsg)
 						checkError(err)
 						newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: nodeIDofBcaster	,
 																			IsExtern: true			,
 																			IsBackup: true			}
 						handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
+						fmt.Println("Connection to node with ID", nodeIDofBcaster, "was successful")
 					}
 					
 				
@@ -162,26 +174,28 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			
 			select {
 			case msg := <- MsgRelay_to_nodeComm_Ch:
-				msgHead, _, err := MessageFormat.Decode_msg(msg)
+				fmt.Println("Har lest fra MsgRelay_to_nodeComm_Ch")
+				msgHeader, _, err := MessageFormat.Decode_msg(msg)
 				checkError(err)
-				if msgHead.MsgType == MessageFormat.NODE_DISCONNECTED {
-					replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHead.FromNodeID				,
-																 From: MessageFormat.NODE_COM				,
-																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
-					msg, _ = MessageFormat.Encode_msg(replyHeader, "")
-					nodeComm_to_MsgRelay_Ch <- msg
-					
-					// Her kan det ha blitt skapt et problem. NodeConnectionManager kan slette connectionen
-					//fra routingtable før NodeMessageRelay får sendt melding tilbake til NodeSingleConnection...
-					
+				if msgHeader.MsgType == MessageFormat.NODE_DISCONNECTED {
 					routingTable_ptr = <- RoutingTable_Ch
-					_, err := routingTable_ptr.Remove_routing_entry(msgHead.FromNodeID)
-					checkError(err)
+					removedRoutingEntry, err := routingTable_ptr.Remove_routing_entry(msgHeader.FromNodeID)
 					RoutingTable_Ch <- routingTable_ptr
 					routingTable_ptr = nil
+
+					checkError(err)
+					if err == nil {
+						replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHeader.FromNodeID				,
+																 From: MessageFormat.NODE_COM				,
+																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
+						msg, _ = MessageFormat.Encode_msg(replyHeader, "")
+						removedRoutingEntry.Send_Ch <- msg
+					}
+				}else{
+					// Maybe Do something
 				}
 			default:
-				// Do Noting
+				// Do Nothing
 			}
 		//---------------------------------------------------------------
 	}
@@ -199,14 +213,14 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 	// Setting up a UDP broadcast socket
 	bCastToAddr, err	:= net.ResolveUDPAddr("udp", net.JoinHostPort("255.255.255.255"	, broadCastToPort	))
 	checkError(err)
-	bCastFromAddr, err 	:= net.ResolveUDPAddr("udp", net.JoinHostPort(getLocalIP()		, broadCastFromPort	))
+	bCastFromAddr, err 	:= net.ResolveUDPAddr("udp", net.JoinHostPort(getLocalIP(useLocalIP), broadCastFromPort	))
 	checkError(err)
 	bCastConn, err 		:= net.DialUDP("udp", bCastFromAddr, bCastToAddr)
 	checkError(err)
 	defer bCastConn.Close()
 	
-	// Setting up a TCP listener socket
-	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(getLocalIP(), "0"))
+	// Setting up a TCP listener socket 
+	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(getLocalIP(useLocalIP), "0"))
 	checkError(err)
 	tcpListener, err 		:= net.ListenTCP("tcp", listenAddr)
 	checkError(err)
@@ -222,8 +236,8 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 	}
 	bCastMsg = append(bCastMsg, []byte(tcpListener.Addr().String())...)
 	
-	
 	// Try to connect
+	fmt.Println("Start connection sequence")
 	i := 0
 	for {
 		_, err 			:= bCastConn.Write(bCastMsg)
@@ -231,18 +245,17 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 		err 			 = tcpListener.SetDeadline(time.Now().Add(1*time.Second))
 		checkError(err)
 		tcpConn, err 	:= tcpListener.Accept()
-		//CheckError(err)
+		checkError(err)
 		
 		if err == nil {
-			buffer 		:= make([]byte, 256)
+			fmt.Println("Accepted an error free connection on local addr:", tcpConn.LocalAddr(), "from remote addr:", tcpConn.RemoteAddr())
+			buffer 		:= make([]byte, 8)
 			err 	 	 = tcpConn.SetReadDeadline(time.Now().Add(1*time.Second))
 			checkError(err)
 			_, err 		:= tcpConn.Read(buffer)
 			checkError(err)
-			msgHeader, _, err := MessageFormat.Decode_msg(buffer)
-			checkError(err)	
 			
-			return tcpConn, msgHeader.FromNodeID, err
+			return tcpConn, uint8(buffer[0]), err
 			
 		}else if i >= 2 {
 			return tcpConn, uint8(0), err
@@ -261,19 +274,23 @@ func checkError(err error) {
 
 
 
-func getLocalIP() string {
-	address, err := net.InterfaceAddrs()
-	if err != nil {
-		return ""
-	}
-	for _, addr := range address {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
+func getLocalIP(useLocalIP bool) string {
+	if useLocalIP {
+		address, err := net.InterfaceAddrs()
+		if err != nil {
+			return ""
+		}
+		for _, addr := range address {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					return ipnet.IP.String()
+				}
 			}
 		}
+		return ""
+	}else{
+		return "127.0.0.1"
 	}
-	return ""
 }
 
 
@@ -308,4 +325,17 @@ func handleNewTcpConnection(conn 				net.Conn								,
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
 }
-		
+
+
+func setMasterNodeInTable(	nodeID 			uint8, 
+							RoutingTable_Ch chan *NodeRoutingTable.RoutingTable_t) error {
+
+	var routingTable_ptr *NodeRoutingTable.RoutingTable_t
+
+	routingTable_ptr = <- RoutingTable_Ch
+	err := routingTable_ptr.Set_master_node(nodeID)
+	RoutingTable_Ch <- routingTable_ptr
+	routingTable_ptr = nil
+
+	return err
+}

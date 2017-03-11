@@ -19,10 +19,12 @@ func Thread(from_NodeComm_Ch 			<-chan []byte	,
 		CheckError(err)
 		
 		
-		sendMsgHeader := MessageFormat.MessageHeader_t{To: MessageFormat.ORDER_DIST, From: MessageFormat.ELEVATOR, MsgType: MessageFormat.NEW_ELEVATOR_REQUEST}
+		sendMsgHeader := MessageFormat.MessageHeader_t{To: MessageFormat.MASTER, From: MessageFormat.ELEVATOR, MsgType: MessageFormat.NEW_ELEVATOR_REQUEST}
 		msgToSend, err := MessageFormat.Encode_msg(sendMsgHeader, msg)
 		CheckError(err)
+		<- ElevCtrl_NodeComm_Mutex_Ch
 		to_NodeComm_Ch <- msgToSend
+		ElevCtrl_NodeComm_Mutex_Ch <- true
 	}
 	
 	ElevCtrl_exit_Ch <- true

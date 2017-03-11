@@ -15,7 +15,7 @@ package MessageFormat
 
 import
 (
-	"errors"
+	//"errors"
 	"fmt"
 )
 
@@ -69,8 +69,7 @@ func Decode_msg(msg []byte) (MessageHeader_t, string, error) {
 	var err error
 	err = nil
 	if len(msg) < 5 {
-		err = errors.New("Error: Message to short: ")
-		err = fmt.Errorf("Error: Message to short to de_generate. Message was: %v", msg)
+		err = fmt.Errorf("Error: Message to short to decode. Message was: %v", msg)
 		return msgHead, data, err
 	}
 	

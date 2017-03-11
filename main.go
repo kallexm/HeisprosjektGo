@@ -30,13 +30,11 @@ import
 func main() {
 	OrderDist_to_NodeComm_Ch 	:= make(chan []byte)
 	NodeComm_to_OrderDist_Ch 	:= make(chan []byte)
-	OrderDist_NodeComm_Mutex_Ch := make(chan bool, 1)
-	OrderDist_NodeComm_Mutex_Ch <- true
+	OrderDist_NodeComm_Mutex_Ch := make(chan bool)
 	
 	ElevCtrl_to_NodeComm_Ch 	:= make(chan []byte)
 	NodeComm_to_ElevCtrl_Ch 	:= make(chan []byte)
-	ElevCtrl_NodeComm_Mutex_Ch	:= make(chan bool, 1)
-	ElevCtrl_NodeComm_Mutex_Ch 	<- true
+	ElevCtrl_NodeComm_Mutex_Ch	:= make(chan bool)
 	
 	OrderDist_exit_Ch	:= make(chan bool)
 	ElevCtrl_exit_Ch	:= make(chan bool)

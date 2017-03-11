@@ -54,19 +54,21 @@ func (rt *RoutingTable_t) Add_new_routing_entries(newRoutingEntries ...RoutingEn
 	*rt = append(*rt, newRoutingEntries...)
 }
 
-func (rt *RoutingTable_t) Remove_routing_entry(nodeID uint8) (uint8, error){
+func (rt *RoutingTable_t) Remove_routing_entry(nodeID uint8) (RoutingEntry_t, error){
+	var removedRoutingTable RoutingEntry_t
 	var err error
 	err = nil
 	for i := 0; i < len(*rt); i++{
 		if (*rt)[i].IsExtern == true && (*rt)[i].NodeID == nodeID {
+			removedRoutingTable = (*rt)[i]
 			(*rt)[i] = (*rt)[len(*rt)-1]
 			(*rt)[len(*rt)-1] = RoutingEntry_t{}
 			(*rt) = (*rt)[:len(*rt)-1]
-			return nodeID, err
+			return removedRoutingTable, err
 		}
 	}
 	err = errors.New("Connection not in routing table")
-	return 0, err
+	return removedRoutingTable, err
 }
 
 func (rt *RoutingEntry_t) Get_receive_Ch() <-chan []byte {
@@ -79,16 +81,24 @@ func (rt *RoutingEntry_t) Get_receive_Ch() <-chan []byte {
 //connectionTable = make([]singleConnection, 0)
 }*/
 
-/*
 
 
 
-func Set_master_node(n int){
-	for i := 0; i < len(connectionTable); i++ {
-		if connectionTable[i].isMasterNode == true {
-			connectionTable[i].isMasterNode = false
+
+func (rt *RoutingTable_t) Set_master_node(nodeID uint8) error {
+	var	foundnodeIDinTable = false
+	for i := 0; i < len(*rt); i++ {
+		if (*rt)[i].IsMaster == true {
+			(*rt)[i].IsMaster = false
+		}
+		if (*rt)[i].NodeID == nodeID && ( (*rt)[i].IsOrderDist == true || (*rt)[i].IsExtern == true ) {
+			(*rt)[i].IsMaster  = true
+			foundnodeIDinTable = true
 		}
 	}
-	connectionTable[n].isMasterNode = true
-	return err
-}*/
+	if foundnodeIDinTable == false {
+		return errors.New("No entry with nodeID in routing table")
+	}else{
+		return nil
+	}
+}

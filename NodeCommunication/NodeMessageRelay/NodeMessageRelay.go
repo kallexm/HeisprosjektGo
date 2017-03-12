@@ -69,7 +69,16 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 							//-----------------------------------------------------------------
 							// Routing Entries
 							if msgHeader.To == MessageFormat.MASTER && searchTableEntry.IsMaster == true {
-								searchTableEntry.Send_Ch <- receivedMsg
+								if msgHeader.From == MessageFormat.ELEVATOR && msgHeader.FromNodeID == 0 {
+									msgHeader.FromNodeID = tableEntry.NodeID
+									sendMsg, _ := MessageFormat.Encode_msg(msgHeader, data)
+									searchTableEntry.Send_Ch <- sendMsg
+									break
+								}else{
+									searchTableEntry.Send_Ch <- receivedMsg
+									break
+								}
+								
 								break
 								
 							}else if msgHeader.To == MessageFormat.ELEVATOR && (searchTableEntry.IsElev == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {

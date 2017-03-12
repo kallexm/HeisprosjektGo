@@ -4,28 +4,13 @@ import
 (
 	"fmt"
 	"time"
+	"net"
 )
 
 
 
 func main(){
-	var str string
-	chan2 := make(chan string)
-	
-	go thread1(chan2)
-	
-	for {
-		select {
-		case chan2 <- "verden":
-		
-		case str = <- chan2:
-			fmt.Println(str)
-		//default:
-			
-		}
-		time.Sleep(500*time.Millisecond)
-	}
-	
+	fmt.Println(getLocalIP(true))
 	
 }
 
@@ -35,18 +20,23 @@ func getNanoSecTime() int64 {
 }
 
 
-func thread1(ch chan string) {
-	var str string
-	for {
-		select {
-		case ch <- "Hei":
-			
-		case str = <- ch:
-			fmt.Println(str)
-		default:
-			//time.Sleep(2000*time.Millisecond)
+
+
+func getLocalIP(useLocalIP bool) string {
+	if useLocalIP {
+		address, err := net.InterfaceAddrs()
+		if err != nil {
+			return ""
 		}
-		
+		for _, addr := range address {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					return ipnet.IP.String()
+				}
+			}
+		}
+		return ""
+	}else{
+		return "127.0.0.1"
 	}
-	
 }

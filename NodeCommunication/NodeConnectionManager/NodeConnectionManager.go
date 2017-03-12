@@ -39,8 +39,22 @@ import
 
 const broadCastToPort 	= "60002"
 const broadCastFromPort = "60022"
-var useLocalIP = false
-var isNodeMaster bool
+const useLocalIP = false
+
+
+type nodeConnectionState_t uint8
+const(
+	STATE_CONNECTING nodeState_t = iota
+	STATE_MASTER
+	STATE_SINGLE
+	STATE_SLAVE
+)
+
+var nodeConnectionState 		nodeConnectionState_t
+var prev_nodeConnectionState 	nodeConnectionState_t
+
+
+
 
 
 /*
@@ -52,7 +66,6 @@ var isNodeMaster bool
 ||			3. Starts to listen for new nodes on the network if it could not find an other node to connect to.
 ||			4. Updates the routing table when necessary.
 */
-
 
 func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			to_OrderDist_Ch 			chan<- 	[]byte	,
@@ -95,28 +108,123 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	
 	
 	// Start connection Sequence
-	isNodeMaster = false
+	nodeConnectionState = STATE_CONNECTING
 	
-	fmt.Println("Connecting to remote node...")
-	conn, IDofNewConnectedNode, err := connect_to_other_Node(isNodeMaster, nodeID)
-	if err != nil {
-		checkError(err)
-		fmt.Println("Failed to connect to remote node...")
-		isNodeMaster = true
-		err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
-		fmt.Println("Node with ID", nodeID, "changed to master")
-		checkError(err)
-	}else{
-		newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: IDofNewConnectedNode	,
+	for {
+		if nodeConnectionState == STATE_CONNECTING {
+
+			fmt.Println("Connecting to remote node...")
+			conn, IDofNewConnectedNode, err := connect_to_other_Node(isNodeMaster, nodeID)
+			if err != nil {
+				checkError(err)
+				fmt.Println("Failed to connect to remote node...")
+				err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
+				checkError(err)
+				fmt.Println("Node with ID", nodeID, "changed to master")
+				nodeConnectionState = STATE_MASTER
+
+			}else{
+				newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: IDofNewConnectedNode	,
 															IsExtern: true					,
 															IsMaster: true					}
-		handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
-		fmt.Println("Connection to node with ID", IDofNewConnectedNode, "was successful")
+				handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
+				fmt.Println("Connection to node with ID", IDofNewConnectedNode, "was successful")
+				nodeConnectionState = STATE_SLAVE
+			}
+
+
+
+
+		}else if nodeConnectionState == STATE_MASTER {
+			
+			if prev_nodeConnectionState != nodeConnectionState {
+				fmt.Println("Start to listen for other nodes...")
+				listenerAddress, err := net.ResolveUDPAddr("udp", ":"+string(broadCastToPort))
+				checkError(err)
+				bCastListener, err := net.ListenUDP("udp", listenerAddress)
+				fmt.Println("Address of bCastListener:", bCastListener.LocalAddr())
+				checkError(err)
+				defer bCastListener.Close()
+			}
+			
+			bCastListener.SetReadDeadline(time.Now().Add(1*time.Second))
+			checkError(err)
+			buffer := make([]byte, 32)
+			_, _, err := bCastListener.ReadFromUDP(buffer)
+			nodeIDofBcaster := uint8(buffer[0])
+			tcpListenerAddrOfBcaster := string(buffer[2:])
+					
+					
+			tcpConn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
+
+			//checkError(err)
+			if err == nil {
+				fmt.Println("Established tcp connection:", tcpConn.LocalAddr(), "->", tcpConn.RemoteAddr())
+				nodeIDmsg := make([]byte, 1)
+				nodeIDmsg[0] = byte(nodeID)
+				_, err := tcpConn.Write(nodeIDmsg)
+				checkError(err)
+				newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: nodeIDofBcaster	,
+																	IsExtern: true			,
+																	IsBackup: true			}
+				handleNewTcpConnection(tcpConn, newRoutingEntry, RoutingTable_Ch)
+				fmt.Println("Connection to node with ID", nodeIDofBcaster, "was successful")
+			}
+
+
+
+
+		}else if nodeConnectionState == STATE_SINGLE {
+			
+
+		}else if nodeConnectionState == STATE_SLAVE {
+			select {
+			case msg := <- MsgRelay_to_nodeComm_Ch:
+				msgHeader, _, err := MessageFormat.Decode_msg(msg)
+				checkError(err)
+				if msgHeader.MsgType == MessageFormat.NODE_DISCONNECTED {
+					routingTable_ptr = <- RoutingTable_Ch
+					removedRoutingEntry, err := routingTable_ptr.Remove_routing_entry(msgHeader.FromNodeID)
+					
+					if false { //Debug print
+						fmt.Println("removedRoutingEntry:", removedRoutingEntry)
+						fmt.Println()
+						fmt.Println("routingTable_ptr after removal:", *routingTable_ptr)
+					} //Debug print
+					
+					RoutingTable_Ch <- routingTable_ptr
+					routingTable_ptr = nil
+
+					checkError(err)
+					if err == nil {
+						replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHeader.FromNodeID				,
+																 From: MessageFormat.NODE_COM				,
+																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
+						msg, _ = MessageFormat.Encode_msg(replyHeader, "")
+						removedRoutingEntry.Send_Ch <- msg
+						fmt.Println("Disconnected node with ID", removedRoutingEntry.NodeID)
+					}
+				}else{
+					// Maybe Do something
+				}
+			default:
+				// Do Nothing
+			}
+
+
+
+
+		}else{
+
+		}
+
+
 	}
+	NodeComm_exit_Ch <- true	
 	
-	fmt.Println("IntoForPlay")
+
 	for {
-		time.Sleep(1*time.Second)
+		//time.Sleep(1*time.Second)
 		
 			if isNodeMaster == true {
 				//---------------------------------------------------------------net.JoinHostPort(getLocalIP(useLocalIP), broadCastToPort)
@@ -136,25 +244,23 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 					checkError(err)
 					buffer := make([]byte, 32)
 					_, _, err := bCastListener.ReadFromUDP(buffer)
-					//fmt.Println("Received ",string(buffer[0:n]), " from ",addr)
-					//fmt.Println("Error is", err)
-					//checkError(err)
 					nodeIDofBcaster := uint8(buffer[0])
 					tcpListenerAddrOfBcaster := string(buffer[2:])
 					
 					
-					//conn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
-					conn, err := net.Dial("tcp", tcpListenerAddrOfBcaster)
+					tcpConn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
+
 					//checkError(err)
 					if err == nil {
+						fmt.Println("Established tcp connection:", tcpConn.LocalAddr(), "->", tcpConn.RemoteAddr())
 						nodeIDmsg := make([]byte, 1)
 						nodeIDmsg[0] = byte(nodeID)
-						_, err := conn.Write(nodeIDmsg)
+						_, err := tcpConn.Write(nodeIDmsg)
 						checkError(err)
 						newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: nodeIDofBcaster	,
 																			IsExtern: true			,
 																			IsBackup: true			}
-						handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
+						handleNewTcpConnection(tcpConn, newRoutingEntry, RoutingTable_Ch)
 						fmt.Println("Connection to node with ID", nodeIDofBcaster, "was successful")
 					}
 					
@@ -174,12 +280,18 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			
 			select {
 			case msg := <- MsgRelay_to_nodeComm_Ch:
-				fmt.Println("Har lest fra MsgRelay_to_nodeComm_Ch")
 				msgHeader, _, err := MessageFormat.Decode_msg(msg)
 				checkError(err)
 				if msgHeader.MsgType == MessageFormat.NODE_DISCONNECTED {
 					routingTable_ptr = <- RoutingTable_Ch
 					removedRoutingEntry, err := routingTable_ptr.Remove_routing_entry(msgHeader.FromNodeID)
+					
+					if false { //Debug print
+						fmt.Println("removedRoutingEntry:", removedRoutingEntry)
+						fmt.Println()
+						fmt.Println("routingTable_ptr after removal:", *routingTable_ptr)
+					} //Debug print
+					
 					RoutingTable_Ch <- routingTable_ptr
 					routingTable_ptr = nil
 
@@ -190,6 +302,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
 						msg, _ = MessageFormat.Encode_msg(replyHeader, "")
 						removedRoutingEntry.Send_Ch <- msg
+						fmt.Println("Disconnected node with ID", removedRoutingEntry.NodeID)
 					}
 				}else{
 					// Maybe Do something
@@ -213,9 +326,7 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 	// Setting up a UDP broadcast socket
 	bCastToAddr, err	:= net.ResolveUDPAddr("udp", net.JoinHostPort("255.255.255.255"	, broadCastToPort	))
 	checkError(err)
-	bCastFromAddr, err 	:= net.ResolveUDPAddr("udp", net.JoinHostPort(getLocalIP(useLocalIP), broadCastFromPort	))
-	checkError(err)
-	bCastConn, err 		:= net.DialUDP("udp", bCastFromAddr, bCastToAddr)
+	bCastConn, err 		:= net.DialUDP("udp", nil, bCastToAddr)
 	checkError(err)
 	defer bCastConn.Close()
 	
@@ -248,7 +359,7 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 		checkError(err)
 		
 		if err == nil {
-			fmt.Println("Accepted an error free connection on local addr:", tcpConn.LocalAddr(), "from remote addr:", tcpConn.RemoteAddr())
+			fmt.Println("Established tcp connection:", tcpConn.LocalAddr(), "->", tcpConn.RemoteAddr())
 			buffer 		:= make([]byte, 8)
 			err 	 	 = tcpConn.SetReadDeadline(time.Now().Add(1*time.Second))
 			checkError(err)
@@ -276,6 +387,8 @@ func checkError(err error) {
 
 func getLocalIP(useLocalIP bool) string {
 	if useLocalIP {
+		return "127.0.0.1"
+	}else{
 		address, err := net.InterfaceAddrs()
 		if err != nil {
 			return ""
@@ -288,8 +401,6 @@ func getLocalIP(useLocalIP bool) string {
 			}
 		}
 		return ""
-	}else{
-		return "127.0.0.1"
 	}
 }
 

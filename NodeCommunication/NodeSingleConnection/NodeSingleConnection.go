@@ -31,11 +31,17 @@ import
 	"fmt"
 	"net"
 	"time"
+	"bytes"
+	//"errors"
 	
 )
 
-const readDeadlineTime 	= 1000*time.Millisecond
-const writeDeadlineTime = 1000*time.Millisecond
+const readDeadlineTime 			= 50*time.Millisecond
+const writeDeadlineTime 		= 50*time.Millisecond
+
+const keepAlive 				= true
+const keepAliveTime				= 400*time.Millisecond
+const numberOfAllowedTimeouts 	= 3
 
 
 func HandleConnection(	conn 							net.Conn,
@@ -43,48 +49,61 @@ func HandleConnection(	conn 							net.Conn,
 						from_node_Ch 			<-chan 	[]byte	,
 						to_node_Ch 				chan<- 	[]byte	,
 						connection_Mutex_Ch		chan 	bool	) {
-	var receiveMsg 	[]byte
+
 	var sendMsg		[]byte
-	//var receiveErr 	error
 	var sendErr		error
+
 	var connBroke 			= false
 	var connBrokeMsgSent 	= false
 
+	var numberOfTimeouts uint8
+	var keepAliveTicker *time.Ticker
+	var keepAliveMessage = []byte{255,255,255,255,255}
+
+	if keepAlive == true {
+			keepAliveTicker = time.NewTicker(keepAliveTime)
+			numberOfTimeouts = 0
+		}
+
 	forLoop:
 	for {
-		time.Sleep(time.Millisecond*400)
 		select {
 		case sendMsg = <- from_node_Ch:
-			fmt.Println("Melding over nett:", string(sendMsg))
 			_ 		= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
-			fmt.Println(sendMsg)
 			_, sendErr	= conn.Write(sendMsg)
-			fmt.Println(sendErr)
 			if sendErr != nil {
-				fmt.Println(sendErr)
+				//fmt.Println(sendErr)
 				connBroke = true
 			}
 
 			if connBroke == true && connBrokeMsgSent == true {
 				head, _, _ := MessageFormat.Decode_msg(sendMsg)
 				if head.MsgType == MessageFormat.NODE_DISCONNECTED && head.From == MessageFormat.NODE_COM {
-					conn.Close()
+					closeError := conn.Close()
+					if closeError != nil {
+						fmt.Println("Problem closing connection to node:", thisConnectsToNodeID)
+					}
 					break forLoop
 				}
 			}
 
 		case <-connection_Mutex_Ch:
+			receiveMsg := make([]byte, 1024)
 			_ 		= conn.SetReadDeadline(time.Now().Add(readDeadlineTime))
 			n, receiveErr	:= conn.Read(receiveMsg)
-			fmt.Println("receiveMsg:", receiveMsg, "receiveErr:", receiveErr, "n:", n)
+
 			if receiveErr == nil && n > 0 {
-				to_node_Ch <- receiveMsg
-			}else if e, ok := receiveErr.(net.Error); ok && !e.Timeout() {
-				fmt.Println(e)
+				if n >= 4 && bytes.Compare(receiveMsg[0:5], keepAliveMessage) == 0 {
+					numberOfTimeouts = 0
+				}else{
+					to_node_Ch <- receiveMsg[0:n]
+				}
+			}else if e, ok := receiveErr.(net.Error); !ok || ( ok && !e.Timeout() ) {
+				//fmt.Println(receiveErr)
 				connBroke = true
 			}
 
-			if connBroke == true {
+			if connBroke == true && connBrokeMsgSent == false {
 				fmt.Println("A connection error accured")
 				sendHeader := MessageFormat.MessageHeader_t{To: 		MessageFormat.NODE_COM			,
 												FromNodeID: thisConnectsToNodeID			,
@@ -94,7 +113,25 @@ func HandleConnection(	conn 							net.Conn,
 				connBrokeMsgSent = true
 			}
 			connection_Mutex_Ch <- true
+
+		case <- keepAliveTicker.C:
+			//fmt.Println("Ticker ticked with numberOfTimeouts: ", numberOfTimeouts)
+			if numberOfTimeouts >= numberOfAllowedTimeouts {
+				connBroke = true
+				keepAliveTicker.Stop()
+			}else{
+				_ 		= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
+				_, sendErr	= conn.Write(keepAliveMessage)
+				if sendErr != nil {
+					//fmt.Println(sendErr)
+					connBroke = true
+				}
+				numberOfTimeouts++
+			}
+			
 		}
 	}
-
 }
+
+
+

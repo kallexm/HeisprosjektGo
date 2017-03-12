@@ -39,7 +39,7 @@ var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 	fmt.Println("Starting messageRelay")
 	for {
-		time.Sleep(time.Millisecond*300)
+		time.Sleep(time.Millisecond*50)
 		routingTable_ptr = <- routingTable_Ch
 
 		//fmt.Printf("%+v", *routingTable_ptr)

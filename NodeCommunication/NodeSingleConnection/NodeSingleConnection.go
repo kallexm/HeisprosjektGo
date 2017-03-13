@@ -40,7 +40,7 @@ const readDeadlineTime 			= 50*time.Millisecond
 const writeDeadlineTime 		= 50*time.Millisecond
 
 const keepAlive 				= true
-const keepAliveTime				= 400*time.Millisecond
+const keepAliveTime				= 700*time.Millisecond
 const numberOfAllowedTimeouts 	= 3
 
 
@@ -59,6 +59,7 @@ func HandleConnection(	conn 							net.Conn,
 	var numberOfTimeouts uint8
 	var keepAliveTicker *time.Ticker
 	var keepAliveMessage = []byte{255,255,255,255,255}
+	var lengthOfKeepAliveMessage = len(keepAliveMessage)
 
 	if keepAlive == true {
 			keepAliveTicker = time.NewTicker(keepAliveTime)
@@ -93,26 +94,25 @@ func HandleConnection(	conn 							net.Conn,
 			n, receiveErr	:= conn.Read(receiveMsg)
 
 			if receiveErr == nil && n > 0 {
-				if n >= 5 && bytes.Compare(receiveMsg[0:5], keepAliveMessage) == 0 {
+				m := n
+				for m >= lengthOfKeepAliveMessage && bytes.Compare(receiveMsg[n-m:lengthOfKeepAliveMessage], keepAliveMessage) == 0 {
 					numberOfTimeouts = 0
-					if n > 5 {
-						to_node_Ch <- receiveMsg[5:n]
-					} 
-					
-				}else if n >= 5 && bytes.Compare(receiveMsg[n-5:n], keepAliveMessage) == 0 {
-					numberOfTimeouts = 0
-					if n > 5 {
-						to_node_Ch <- receiveMsg[n-5:n]
-					}
-				}else{
-					to_node_Ch <- receiveMsg
+					m = m - lengthOfKeepAliveMessage
 				}
-				
+				i := n
+				for i >= lengthOfKeepAliveMessage && bytes.Compare(receiveMsg[i-lengthOfKeepAliveMessage:i], keepAliveMessage) == 0 {
+					numberOfTimeouts = 0
+					i = i - lengthOfKeepAliveMessage
+				}
+				if i-(n-m) > 0 {
+					to_node_Ch <- receiveMsg[(n-m):i]
+				}
 			
 			}else if e, ok := receiveErr.(net.Error); !ok || ( ok && !e.Timeout() ) {
 				//fmt.Println(receiveErr)
 				connBroke = true
 			}
+
 
 			if connBroke == true && connBrokeMsgSent == false {
 				fmt.Println("A connection error accured")

@@ -134,4 +134,3 @@ func cloaseDoor(){
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	Elev_To_main <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
 }
-

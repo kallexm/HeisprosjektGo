@@ -15,7 +15,6 @@ package MessageFormat
 
 import
 (
-	"errors"
 	"fmt"
 )
 
@@ -25,22 +24,24 @@ const (
 	BACKUP
 	ELEVATOR
 	NODE_COM
+	ORDER_DIST
 )
 
 
 
 type MsgType_t uint8
 const (
-	HEARTHBEAT = iota
-	BACKUP_DATA_TRANSFER
-	NEW_ORDER_TO_ELEVATOR //Order stuct fra ElevatorControl/ElevatorStatus
-	SET_LIGHT             //ButtonPlacement struc fra ElevatorControl/ElvatorDriver, vurder nytt nav siden den kan skru av og på 
-	CLEAR_LIGHT 			  
-	ELEVATOR_STATUS_DATA  //position struct, fra ElevatorControl/ElevatorStatus 	
-	NEW_ELEVATOR_REQUEST  //Order struct fra ElevatorControl/ElevatorStatus 
-	ORDER_FINISHED_BY_ELEVATOR //position struct, fra ElevatorControl/ElevatorStatus 
-	PING
+	BACKUP_DATA_TRANSFER	= iota
+	NEW_ORDER_TO_ELEVATOR			//Order stuct fra ElevatorControl/ElevatorStatus
+	SET_LIGHT						//ButtonPlacement struc fra ElevatorControl/ElvatorDriver, vurder nytt nav siden den kan skru av og på 
+	CLEAR_LIGHT
+	ELEVATOR_STATUS_DATA			//position struct, fra ElevatorControl/ElevatorStatus 
+	NEW_ELEVATOR_REQUEST			//Order struct fra ElevatorControl/ElevatorStatus 
+	ORDER_FINISHED_BY_ELEVATOR		//position struct, fra ElevatorControl/ElevatorStatus 
 	NODE_DISCONNECTED
+	NODE_CONNECTED
+	CHANGE_TO_MASTER
+	CHANGE_TO_SLAVE
 )
 
 type MessageHeader_t struct {
@@ -57,7 +58,7 @@ func Encode_msg(msgHead MessageHeader_t, data []byte) ([]byte, error) {
 	err = nil
 	
 	msg = append(msg, byte(msgHead.To), byte(msgHead.ToNodeID), byte(msgHead.From), byte(msgHead.FromNodeID), byte(msgHead.MsgType))
-	msg = append(msg,data...)
+	msg = append(msg, data...)
 	return msg, err
 }
 
@@ -68,8 +69,7 @@ func Decode_msg(msg []byte) (MessageHeader_t, []byte, error) {
 	var err error
 	err = nil
 	if len(msg) < 5 {
-		err = errors.New("Error: Message to short: ")
-		err = fmt.Errorf("Error: Message to short to de_generate. Message was: %v", msg)
+		err = fmt.Errorf("Error: Message to short to decode. Message was: %v", msg)
 		return msgHead, data, err
 	}
 	

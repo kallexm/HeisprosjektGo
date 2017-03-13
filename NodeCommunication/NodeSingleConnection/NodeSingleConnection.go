@@ -43,6 +43,7 @@ const keepAlive 				= true
 const keepAliveTime				= 700*time.Millisecond
 const numberOfAllowedTimeouts 	= 3
 
+const readBufferSize 			= 1024
 
 func HandleConnection(	conn 							net.Conn,
 						thisConnectsToNodeID 			uint8	,
@@ -89,7 +90,7 @@ func HandleConnection(	conn 							net.Conn,
 			}
 
 		case <-connection_Mutex_Ch:
-			receiveMsg := make([]byte, 1024)
+			receiveMsg := make([]byte, readBufferSize)
 			_ 		= conn.SetReadDeadline(time.Now().Add(readDeadlineTime))
 			n, receiveErr	:= conn.Read(receiveMsg)
 
@@ -119,7 +120,7 @@ func HandleConnection(	conn 							net.Conn,
 				sendHeader := MessageFormat.MessageHeader_t{To: 		MessageFormat.NODE_COM			,
 												FromNodeID: thisConnectsToNodeID			,
 												MsgType: 	MessageFormat.NODE_DISCONNECTED	}
-				connBrokeMsg, _ := MessageFormat.Encode_msg(sendHeader, "")
+				connBrokeMsg, _ := MessageFormat.Encode_msg(sendHeader, []byte(""))
 				to_node_Ch <- connBrokeMsg
 				connBrokeMsgSent = true
 			}

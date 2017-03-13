@@ -35,7 +35,7 @@ var i = 0*/
 		
 
 		sendMsgHeader := MessageFormat.MessageHeader_t{To: MessageFormat.MASTER, From: MessageFormat.ELEVATOR, MsgType: MessageFormat.NEW_ELEVATOR_REQUEST}
-		msgToSend, err := MessageFormat.Encode_msg(sendMsgHeader, msg)
+		msgToSend, err := MessageFormat.Encode_msg(sendMsgHeader, []byte(msg))
 		CheckError(err)
 		<- ElevCtrl_NodeComm_Mutex_Ch
 		to_NodeComm_Ch <- msgToSend

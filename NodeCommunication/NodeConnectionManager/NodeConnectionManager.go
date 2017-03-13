@@ -118,8 +118,11 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	nodeConnectionState 		= STATE_CONNECTING
 	prev_nodeConnectionState 	= STATE_CONNECTING
 	
-	var bCastListener *net.UDPConn
+	var bCastListener 			*net.UDPConn
 	var numberOfConnectedSlaves uint8
+
+	var nodeDisconnectedList 	[]uint8
+	var nodeConnectedList 		[]uint8
 
 	for {
 		if nodeConnectionState == STATE_CONNECTING {
@@ -159,7 +162,43 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 			// ---[ Exit Action ]----
 			if nodeConnectionState != STATE_CONNECTING {
-				
+				if nodeConnectionState == STATE_MASTER {
+					select {
+					case <- nodeComm_MsgRelay_Mutex_Ch:
+						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST		,
+																	ToNodeID: 	nodeID 							,
+																	From:		MessageFormat.NODE_COM			,
+																	FromNodeID: nodeID 							,
+																	MsgType:	MessageFormat.CHANGE_TO_MASTER	}
+						changeToMasterMsg, err := MessageFormat.Encode_msg(msgHeader, []byte(""))
+						checkError(err)
+
+						tryToSendTimer := time.NewTimer(500*time.Millisecond)
+						select {
+						case nodeComm_to_MsgRelay_Ch <- changeToMasterMsg:
+						case <- tryToSendTimer.C:
+						}
+						nodeComm_MsgRelay_Mutex_Ch <- true
+					}
+				}else if nodeConnectionState == STATE_SLAVE {
+					select {
+					case <- nodeComm_MsgRelay_Mutex_Ch:
+						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST 			,
+																	ToNodeID: 	nodeID 							,
+																	From:		MessageFormat.NODE_COM			,
+																	FromNodeID: nodeID 							,
+																	MsgType:	MessageFormat.CHANGE_TO_SLAVE	}
+						changeToSlaveMsg, err := MessageFormat.Encode_msg(msgHeader, []byte(""))
+						checkError(err)
+
+						tryToSendTimer := time.NewTimer(500*time.Millisecond)
+						select {
+						case nodeComm_to_MsgRelay_Ch <- changeToSlaveMsg:
+						case <- tryToSendTimer.C:
+						}
+						nodeComm_MsgRelay_Mutex_Ch <- true
+					}
+				}
 			}
 
 
@@ -192,7 +231,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			if err == nil {
 				nodeIDofBcaster := uint8(buffer[0])
 				tcpListenerAddrOfBcaster := string(buffer[2:])
-				tcpConn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 1*time.Second)
+				tcpConn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 200*time.Millisecond)
 				checkError(err)
 				if err == nil {
 					fmt.Println("Established tcp connection:", tcpConn.LocalAddr(), "->", tcpConn.RemoteAddr())
@@ -206,12 +245,14 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 																			IsBackup: true			}
 						handleNewTcpConnection(tcpConn, newRoutingEntry, RoutingTable_Ch)
 						fmt.Println("Connection to node with ID", nodeIDofBcaster, "was successful")
+						nodeConnectedList = append(nodeConnectedList, nodeIDofBcaster)
 						numberOfConnectedSlaves++
 					}else{
 						tcpConn.Close()
 					}
 				}
 			}
+
 
 			select {
 			case msg := <- MsgRelay_to_nodeComm_Ch:
@@ -226,18 +267,53 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 					checkError(err)
 					if err == nil {
 						replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHeader.FromNodeID				,
-																 From: MessageFormat.NODE_COM				,
-																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
-						msg, _ = MessageFormat.Encode_msg(replyHeader, "")
+																	 From: MessageFormat.NODE_COM				,
+																	 MsgType: MessageFormat.NODE_DISCONNECTED	} 
+						msg, _ = MessageFormat.Encode_msg(replyHeader, []byte(""))
 						removedRoutingEntry.Send_Ch <- msg
 						fmt.Println("Disconnected node with ID", removedRoutingEntry.NodeID)
+						nodeDisconnectedList = append(nodeDisconnectedList, msgHeader.FromNodeID)
 						numberOfConnectedSlaves--
 					}
 				}else{
 
 				}
-			default:
+			case <- nodeComm_MsgRelay_Mutex_Ch:
+				if len(nodeConnectedList) > 0 {
+					connectedNodeID := []byte{byte(nodeConnectedList[len(nodeConnectedList)-1])}
+					msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.MASTER 			,
+																ToNodeID: 	nodeID 							,
+																From:		MessageFormat.NODE_COM			,
+																FromNodeID: nodeID 							,
+																MsgType:	MessageFormat.NODE_CONNECTED	}
+					newNodeConnectedMsg, err := MessageFormat.Encode_msg(msgHeader, connectedNodeID)
+					checkError(err)
 
+					tryToSendTimer := time.NewTimer(500*time.Millisecond)
+					select {
+					case nodeComm_to_MsgRelay_Ch <- newNodeConnectedMsg:
+						nodeConnectedList = nodeConnectedList[:len(nodeConnectedList)-1]
+					case <- tryToSendTimer.C:
+					}
+				}
+				if len(nodeDisconnectedList) > 0 {
+					disconnectedNodeID := []byte{byte(nodeDisconnectedList[len(nodeDisconnectedList)-1])}
+					msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.MASTER 	,
+																ToNodeID: 	nodeID 					,
+																From:		MessageFormat.NODE_COM	,
+																FromNodeID: nodeID 					,
+																MsgType:	MessageFormat.NODE_DISCONNECTED 			}
+					nodeDisconnectedMsg, err := MessageFormat.Encode_msg(msgHeader, disconnectedNodeID)
+					checkError(err)
+					
+					tryToSendTimer := time.NewTimer(500*time.Millisecond)
+					select {
+					case nodeComm_to_MsgRelay_Ch <- nodeDisconnectedMsg:
+						nodeDisconnectedList = nodeDisconnectedList[:len(nodeDisconnectedList)-1]
+					case <- tryToSendTimer.C:
+					}
+				}
+				nodeComm_MsgRelay_Mutex_Ch <- true
 			}
 
 			if numberOfConnectedSlaves == 0 && getLocalIP(useLocalIP) == "" {
@@ -300,7 +376,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 						replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHeader.FromNodeID				,
 																 From: MessageFormat.NODE_COM				,
 																 MsgType: MessageFormat.NODE_DISCONNECTED	} 
-						msg, _ = MessageFormat.Encode_msg(replyHeader, "")
+						msg, _ = MessageFormat.Encode_msg(replyHeader, []byte(""))
 						removedRoutingEntry.Send_Ch <- msg
 						fmt.Println("Disconnected node with ID", removedRoutingEntry.NodeID)
 						nodeConnectionState = STATE_CONNECTING

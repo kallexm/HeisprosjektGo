@@ -32,16 +32,17 @@ const (
 
 type MsgType_t uint8
 const (
-	HEARTHBEAT = iota
-	BACKUP_DATA_TRANSFER
+	BACKUP_DATA_TRANSFER	= iota
 	NEW_ORDER_TO_ELEVATOR
 	SET_LIGHT
 	CLEAR_LIGHT
 	ELEVATOR_STATUS_DATA
 	NEW_ELEVATOR_REQUEST
 	ORDER_FINISHED_BY_ELEVATOR
-	PING
 	NODE_DISCONNECTED
+	NODE_CONNECTED
+	CHANGE_TO_MASTER
+	CHANGE_TO_SLAVE
 )
 
 type MessageHeader_t struct {
@@ -52,20 +53,20 @@ type MessageHeader_t struct {
 	MsgType 	MsgType_t
 }
 
-func Encode_msg(msgHead MessageHeader_t, data string) ([]byte, error) {
+func Encode_msg(msgHead MessageHeader_t, data []byte) ([]byte, error) {
 	var msg []byte
 	var err error
 	err = nil
 	
 	msg = append(msg, byte(msgHead.To), byte(msgHead.ToNodeID), byte(msgHead.From), byte(msgHead.FromNodeID), byte(msgHead.MsgType))
-	msg = append(msg, []byte(data)...)
+	msg = append(msg, data...)
 	return msg, err
 }
 
 
-func Decode_msg(msg []byte) (MessageHeader_t, string, error) {
+func Decode_msg(msg []byte) (MessageHeader_t, []byte, error) {
 	var msgHead MessageHeader_t
-	var data string
+	var data []byte
 	var err error
 	err = nil
 	if len(msg) < 5 {
@@ -78,7 +79,7 @@ func Decode_msg(msg []byte) (MessageHeader_t, string, error) {
 	msgHead.From 		= Address_t(msg[2])
 	msgHead.FromNodeID  = uint8(msg[3])
 	msgHead.MsgType 	= MsgType_t(msg[4])
-	data 				= string(msg[5:])
+	data 				= msg[5:]
 	
 	return msgHead, data, err
 }

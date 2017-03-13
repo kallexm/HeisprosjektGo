@@ -29,7 +29,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 		case msg := <- from_NodeComm_Ch:
 			receivedMsgHeader, data, err := MessageFormat.Decode_msg(msg)
 			CheckError(err)
-			fmt.Println("Message received:", data, receivedMsgHeader)
+			fmt.Println("Message received:", string(data), receivedMsgHeader)
 			
 		default:
 			time.Sleep(100*time.Millisecond)

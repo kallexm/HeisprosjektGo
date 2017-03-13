@@ -162,7 +162,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 			// ---[ Exit Action ]----
 			if nodeConnectionState != STATE_CONNECTING {
-				if nodeConnectionState == STATE_MASTER {
+				if nodeConnectionState == STATE_MASTER || nodeConnectionState == STATE_SINGLE {
 					select {
 					case <- nodeComm_MsgRelay_Mutex_Ch:
 						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST		,

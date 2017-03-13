@@ -57,7 +57,8 @@ func main() {
 	go OrderDistributerThread.Thread(	NodeComm_to_OrderDist_Ch	,
 									 	OrderDist_to_NodeComm_Ch	,
 									 	OrderDist_NodeComm_Mutex_Ch ,
-									 	OrderDist_exit_Ch       	)
+									 	OrderDist_exit_Ch       	,
+									 	nodeID 						)
 
 	go ElevatorControlThread.Thread(	NodeComm_to_ElevCtrl_Ch		,
 										ElevCtrl_to_NodeComm_Ch		,

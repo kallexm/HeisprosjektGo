@@ -15,7 +15,7 @@ var timerFinishedunconfirmedOrderCh (chan bool)
 var main_To_Elev_ch (<-chan []byte)
 var Elev_To_main (chan <-[]byte)
 
-func ElevatorControlThred(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_Ec_Ch chan bool) {
+func Thread(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_Ec_Ch chan bool, ElevCtrl_exit_Ch chan bool) {
 	getButtonCh := make(chan ElevatorDriver.ButtonPlacement)
 	getFloorCh := make(chan int)
 	timerFinishedDoorCh := make(chan bool)
@@ -66,6 +66,7 @@ func ElevatorControlThred(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- [
 			//is nessasary so to prevent dedlocks. If it is not presant, we can be stuck in the case statement.   
 		}
 	}
+	ElevCtrl_exit_Ch <- true
 }
 
 

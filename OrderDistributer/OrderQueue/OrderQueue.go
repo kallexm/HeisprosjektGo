@@ -23,11 +23,21 @@ const(
 
 type Id_t int
 
+type State_t int
+const(
+	idel = iota
+	doorOpen 
+	StateUp
+	StateDown
+	malfunction
+)
+
 type Elev struct{
 	Id Id_t
-	CurentOrder Order
+	CurentOrder *Order
 	CurentPosition Position
-	CurentInternalOrders []Order
+	CurentInternalOrders []*Order
+	ElevatorStatus State_t
 
 }
 
@@ -37,12 +47,12 @@ func (elev Elev) changePosition(position Position) Elev{
 	
 }
 
-func (elev Elev) AddInternalOrder(order Order) Elev{
+func (elev Elev) AddInternalOrder(order *Order) Elev{
 	elev.CurentInternalOrders = append(elev.CurentInternalOrders, order)
 	return elev
 }
 
-func (elev Elev) ChangeCurentOrder(order Order) Elev{
+func (elev Elev) ChangeCurentOrder(order *Order) Elev{
 	elev.CurentOrder = order
 	return elev
 }
@@ -52,6 +62,7 @@ type Order struct{
 	OrderType OrderType_t
 	DesignatedElevator Id_t
 	Cost map[Id_t]int
+	OrderId Id_t
 }
 
 func (order Order) ChangeDesignatedElevator(id Id_t) Order{
@@ -68,34 +79,37 @@ type Position struct{
 var elevators map[Id_t]Elev
 var disabeledElevators map[Id_t]Elev
 var orders []Order
+var orderIdNr int
 
 func init(){
 	elevators = make(map[Id_t]Elev)
 	disabeledElevators = make(map[Id_t]Elev)
 	orders = make([]Order,0)
+	orderIdNr = 0
 }
 
 func AddElevator(id int){
 	if _, ok := disabeledElevators[Id_t(id)]; ok{
-		delete(disabeledElevators,Id_t(id))
 		elevators[Id_t(id)] = disabeledElevators[Id_t(id)]
+		delete(disabeledElevators,Id_t(id))
 		return
 	}
-	newElev := Elev{Id:Id_t(id),CurentOrder: Order{},CurentPosition: Position{}, CurentInternalOrders: make([]Order,0)}
+	newElev := Elev{Id:Id_t(id),CurentOrder: &Order{},CurentPosition: Position{}, CurentInternalOrders: make([]*Order,0)}
 	elevators[Id_t(id)] = newElev
 }
 //Comand orderes must have a designatedElevator id representing the elevator it originated from
 func AddOrder(newOrder Order) bool{
+	newOrder.OrderId = Id_t(orderIdNr)
 	for _, order := range orders{
-		if newOrder.Floor == order.Floor && newOrder.OrderType == order.OrderType{
+		if newOrder.OrderId == order.OrderId{
 			return false
 		}
-	}
-	if newOrder.OrderType == Comand{
-		//elevators[newOrder.DesignatedElevator].CurentInternalOrders = append(elevators[newOrder.DesignatedElevator].CurentInternalOrders,newOrder)
-		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(newOrder)
-	}  
+	} 
 	orders = append(orders,newOrder)
+	if newOrder.OrderType == Comand{
+		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(&orders[len(orders)-1])
+	} 
+	orderIdNr += 1
 	return true
 }
 

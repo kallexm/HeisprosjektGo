@@ -29,7 +29,7 @@ func asigneCostToOrders(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t
 				order.Cost[elev.Id] = INF
 				continue
 			} 
-			if elev.CurentOrder.OrderType == OrderQueue.Comand && requierTurning(elev,order){
+			if (*elev.CurentOrder).OrderType == OrderQueue.Comand && requierTurning(elev,order){
 				order.Cost[elev.Id] = INF
 				continue
 			}
@@ -48,11 +48,6 @@ func asigneCostToOrders(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t
 				cost += lengthCost
 			}
 			order.Cost[elev.Id] = cost
-			//Do cost calculations
-			// if internal order and change in direction == inf cost
-			// if internal order and order_dir is in oposit direction == inf cost
-			// if curent order inbetween elevator and order add STOP_COST
-			// 
 		}
 	} 
 }
@@ -83,7 +78,7 @@ func requierStop(elev OrderQueue.Elev, order OrderQueue.Order) bool{
 	}
 }
 
-func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t]OrderQueue.Elev) map[OrderQueue.Id_t]*OrderQueue.Order{
+/*func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t]OrderQueue.Elev) map[OrderQueue.Id_t]*OrderQueue.Order{
 	asignedOrders := make(map[OrderQueue.Id_t]*OrderQueue.Order)
 	for i, _:= range orders{
 		sugestedSignement :=  make(map[OrderQueue.Id_t]*OrderQueue.Order)
@@ -91,9 +86,12 @@ func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue
 			if _, ok := asignedOrders[id]; !ok{
 				asignedOrders[id] = &OrderQueue.Order{Cost: map[OrderQueue.Id_t]int{id: INF}}
 			}
+			fmt.Println("elevatord id: ", id, "order ", orders[i], "asignedOrder ", asignedOrders[id], "curentOrder ", elevators[id].CurentOrder)
 			if orders[i].Cost[id] < (*asignedOrders[id]).Cost[id] && (len(elevators[id].CurentOrder.Cost) == 0 || orders[i].Cost[id] < elevators[id].CurentOrder.Cost[id]){
 				sugestedSignement[id] = &orders[i]
+				fmt.Println("elev id: ", id, "sugested asignemtn: ", sugestedSignement[id])
 			}
+			//fmt.Println("Elev id: ", id, "sugested order: ", sugestedSignement)
 		}
 		if len(sugestedSignement) > 1{
 			largestCost := [2]int{0, 0}
@@ -115,4 +113,123 @@ func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue
 		*asignedOrders[asignedId] = (*asignedOrders[asignedId]).ChangeDesignatedElevator(asignedId)
 	}
 	return asignedOrders
+}*/
+
+
+func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t]OrderQueue.Elev) map[OrderQueue.Id_t]*OrderQueue.Order{
+	sortedOrderList := make(map[OrderQueue.Id_t][]*OrderQueue.Order)
+	for id, _ := range elevators{
+		if _, ok := sortedOrderList[id]; !ok{
+			sortedOrderList[id] = []*OrderQueue.Order{}
+			fmt.Println("adde new element")
+		}
+		for i, _ := range orders{
+			if len(sortedOrderList[id]) == 0{
+				sortedOrderList[id] = []*OrderQueue.Order{&orders[i]}
+				continue
+			}
+			iteratedOrder := &orders[i]
+			for j, _ := range sortedOrderList[id]{
+				if iteratedOrder.Cost[id] < sortedOrderList[id][j].Cost[id]{
+					temp := sortedOrderList[id][j]
+					sortedOrderList[id][j] = iteratedOrder
+					iteratedOrder = temp 
+				}
+			}
+			sortedOrderList[id] = append(sortedOrderList[id], iteratedOrder)
+
+		}
+	}
+	/*for id, orders := range sortedOrderList{
+		fmt.Println("Elevator id: ", id)
+		for _, order := range orders{
+			fmt.Println("Orders in sortedOrderList", order)
+		}
+	}*/
+	_, asignedOrders := tryCombo(sortedOrderList)
+	for asignedId, _ := range asignedOrders{
+		elevators[asignedId] = elevators[asignedId].ChangeCurentOrder(asignedOrders[asignedId])
+		*asignedOrders[asignedId] = (*asignedOrders[asignedId]).ChangeDesignatedElevator(asignedId)
+	}
+	return asignedOrders
+	
+}
+
+
+func tryCombo(sortedOrderList map[OrderQueue.Id_t][]*OrderQueue.Order) (int, map[OrderQueue.Id_t]*OrderQueue.Order){
+	/*for id, orders := range sortedOrderList{
+		fmt.Println("Elevator id: ", id)
+		for _, order := range orders{
+			fmt.Println("Orders in sortedOrderList", order)
+		}
+	}*/
+	asignedOrders := make(map[OrderQueue.Id_t]*OrderQueue.Order)
+	conflictAsignedOrders := make(map[OrderQueue.Id_t]*OrderQueue.Order)
+	tempAsignedOrders := make(map[OrderQueue.Id_t]*OrderQueue.Order)
+	highestCost := INF
+	sum := 0
+	nrUnicOrders := 0
+	uniceOrder := true
+	tempCost := INF
+	for firstId, _ := range sortedOrderList{
+		for secondId, _ := range sortedOrderList{
+			if firstId == secondId{
+				continue
+			}
+			if len(sortedOrderList[secondId]) == 0 || len(sortedOrderList[firstId]) == 0{
+				uniceOrder = true
+				continue
+			}
+			if sortedOrderList[firstId][0].OrderId == sortedOrderList[secondId][0].OrderId{
+				for id, _ := range sortedOrderList{
+					if firstId == id && len(sortedOrderList[firstId]) == 1 && len(sortedOrderList[secondId]) != 1{
+						temp := sortedOrderList[secondId]
+						sortedOrderList[secondId] = sortedOrderList[secondId][1:]
+						tempCost, tempAsignedOrders = tryCombo(sortedOrderList)
+						sortedOrderList[id] = temp
+					} else if secondId == id && len(sortedOrderList[secondId]) == 1 && len(sortedOrderList[firstId]) != 1{
+						temp := sortedOrderList[firstId]
+						sortedOrderList[firstId] = sortedOrderList[firstId][1:]
+						tempCost, tempAsignedOrders = tryCombo(sortedOrderList)
+						sortedOrderList[id] = temp
+					} else if len(sortedOrderList[firstId]) == 1 && len(sortedOrderList[secondId]) == 1 {
+						temp := sortedOrderList
+						delete(sortedOrderList, secondId)
+						tempCost, tempAsignedOrders = tryCombo(sortedOrderList)
+						sortedOrderList = temp
+					} else {
+						temp := sortedOrderList[id]
+						sortedOrderList[id] = sortedOrderList[id][1:]
+						tempCost, tempAsignedOrders = tryCombo(sortedOrderList)
+						sortedOrderList[id] = temp
+					}
+					if tempCost < highestCost{
+							highestCost = tempCost
+							conflictAsignedOrders = tempAsignedOrders
+					}
+
+				}
+				uniceOrder = false
+			} else {
+				uniceOrder = true
+			}
+		}
+		if uniceOrder == true{
+			nrUnicOrders += 1
+			if len(sortedOrderList[firstId]) != 0{
+				sum += sortedOrderList[firstId][0].Cost[firstId]
+				asignedOrders[firstId] = sortedOrderList[firstId][0]
+			}
+		}
+	}
+	if nrUnicOrders == len(sortedOrderList){
+		/*for _, order := range asignedOrders{
+			fmt.Println("asignedOrder: ", order)
+		}*/
+		return sum, asignedOrders
+	}
+	/*for _, order := range conflictAsignedOrders{
+		fmt.Println("conflictAsignedOrder: ", order)
+	}*/
+	return highestCost, conflictAsignedOrders
 }

@@ -126,7 +126,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 			// ---[ Entry Action ]----
 			if prev_nodeConnectionState != nodeConnectionState {
-
+				fmt.Println("[Enter CONNECTING]")
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
@@ -139,7 +139,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				if err != nil {
 					checkError(err)
 					fmt.Println("Failed to connect to remote node...")
-					err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
+					
 					checkError(err)
 					fmt.Println("Node with ID", nodeID, "changed to master")
 					nodeConnectionState = STATE_MASTER
@@ -149,6 +149,8 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 																		IsExtern: true					,
 																		IsMaster: true					}
 					handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
+					err := setMasterNodeInTable(IDofNewConnectedNode, RoutingTable_Ch)
+					checkError(err)
 					fmt.Println("Connection to node with ID", IDofNewConnectedNode, "was successful")
 					nodeConnectionState = STATE_SLAVE
 				}
@@ -167,14 +169,19 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			
 			// ---[ Entry Action ]----
 			if prev_nodeConnectionState != nodeConnectionState {
-				
+				fmt.Println("[Enter MASTER]")
+				err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
+
 				fmt.Println("Start to listen for other nodes...")
 				listenerAddress, err := net.ResolveUDPAddr("udp", ":"+string(broadCastToPort))
 				checkError(err)
 				bCastListener, err = net.ListenUDP("udp", listenerAddress)
-				fmt.Println("Address of bCastListener:", bCastListener.LocalAddr())
 				checkError(err)
-
+				if err != nil {
+					nodeConnectionState = STATE_CONNECTING
+					continue
+				}
+				fmt.Println("Address of bCastListener:", bCastListener.LocalAddr())
 				prev_nodeConnectionState = nodeConnectionState
 			}
 			
@@ -250,7 +257,9 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 			// ---[ Entry Action ]----
 			if prev_nodeConnectionState != nodeConnectionState {
-
+				fmt.Println("[Enter SINGLE]")
+				err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
+				checkError(err)
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
@@ -271,7 +280,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 			// ---[ Entry Action ]----
 			if prev_nodeConnectionState != nodeConnectionState {
-
+				fmt.Println("[Enter SLAVE]")
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
@@ -333,7 +342,9 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 	checkError(err)
 	bCastConn, err 		:= net.DialUDP("udp", nil, bCastToAddr)
 	checkError(err)
-	defer bCastConn.Close()
+	if err == nil {
+
+	}
 	
 	// Setting up a TCP listener socket 
 	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(getLocalIP(useLocalIP), "0"))

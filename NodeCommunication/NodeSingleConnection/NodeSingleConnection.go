@@ -93,11 +93,22 @@ func HandleConnection(	conn 							net.Conn,
 			n, receiveErr	:= conn.Read(receiveMsg)
 
 			if receiveErr == nil && n > 0 {
-				if n >= 4 && bytes.Compare(receiveMsg[0:5], keepAliveMessage) == 0 {
+				if n >= 5 && bytes.Compare(receiveMsg[0:5], keepAliveMessage) == 0 {
 					numberOfTimeouts = 0
+					if n > 5 {
+						to_node_Ch <- receiveMsg[5:n]
+					} 
+					
+				}else if n >= 5 && bytes.Compare(receiveMsg[n-5:n], keepAliveMessage) == 0 {
+					numberOfTimeouts = 0
+					if n > 5 {
+						to_node_Ch <- receiveMsg[n-5:n]
+					}
 				}else{
-					to_node_Ch <- receiveMsg[0:n]
+					to_node_Ch <- receiveMsg
 				}
+				
+			
 			}else if e, ok := receiveErr.(net.Error); !ok || ( ok && !e.Timeout() ) {
 				//fmt.Println(receiveErr)
 				connBroke = true

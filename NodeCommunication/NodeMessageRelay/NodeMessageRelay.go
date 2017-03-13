@@ -28,7 +28,7 @@ import
 	
 	"fmt"
 	//"os"
-	"time"
+	//"time"
 )
 
 
@@ -39,7 +39,7 @@ var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 	fmt.Println("Starting messageRelay")
 	for {
-		time.Sleep(time.Millisecond*50)
+		//time.Sleep(time.Millisecond*50)
 		routingTable_ptr = <- routingTable_Ch
 
 		//fmt.Printf("%+v", *routingTable_ptr)
@@ -79,13 +79,11 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 									break
 								}
 								
-								break
-								
 							}else if msgHeader.To == MessageFormat.ELEVATOR && (searchTableEntry.IsElev == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
 								searchTableEntry.Send_Ch <- receivedMsg
 								break
 								
-							}else if msgHeader.To == MessageFormat.BACKUP && (searchTableEntry.IsBackup == true || searchTableEntry.IsExtern == true) && msgHeader.ToNodeID == searchTableEntry.NodeID {
+							}else if msgHeader.To == MessageFormat.BACKUP && (searchTableEntry.IsBackup == true || searchTableEntry.IsExtern == true) {
 								searchTableEntry.Send_Ch <- receivedMsg
 								break
 								

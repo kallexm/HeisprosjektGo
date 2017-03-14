@@ -2,7 +2,7 @@ package ElevatorStructs
 
 import(
 	//"../ElevatorDriver/Elev"
-	"../ElevatorDriver/simulator/client"
+	//"../ElevatorDriver/simulator/client"
 )
 
 
@@ -18,18 +18,18 @@ const(
 //Struckt originaly from Driver
 type ButtonPlacement struct{
 	Floor 		int
-	ButtonType 	Elev.ButtonType
+	ButtonType 	ButtonType
 	Value 		int
 }
 
 //Data types from Status
 type State int
 const(
-	Idel 		= iota
-	DoorOpen 
-	Up
-	Down
-	Malfunction
+	StateIdel 		= iota
+	StateDoorOpen 
+	StateUp
+	StateDown
+	StateMalfunction
 )
 
 type Dir int

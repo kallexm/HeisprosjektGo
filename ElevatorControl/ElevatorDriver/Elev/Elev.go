@@ -44,15 +44,15 @@ func getLampChannel(floor int, lamp ButtonType) (int, error) {
 
 
 func initButtonChannelsMap() map[ElevatorStructs.ButtonType]map[int]int{
-	button_channel_map := map[ButtonType]map[int]int{
-		Up:map[int]int{1:channels.BUTTON_UP1,2:channels.BUTTON_UP2,3:channels.BUTTON_UP3,4:channels.BUTTON_UP4},
-		Down:map[int]int{1:channels.BUTTON_DOWN1,2:channels.BUTTON_DOWN2,3:channels.BUTTON_DOWN3,4:channels.BUTTON_DOWN4},
-		Comand:map[int]int{1:channels.BUTTON_COMMAND1,2:channels.BUTTON_COMMAND2,3:channels.BUTTON_COMMAND3,4:channels.BUTTON_COMMAND4}}
+	button_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
+		ElevatorStructs.Up:map[int]int{1:channels.BUTTON_UP1,2:channels.BUTTON_UP2,3:channels.BUTTON_UP3,4:channels.BUTTON_UP4},
+		ElevatorStructs.Down:map[int]int{1:channels.BUTTON_DOWN1,2:channels.BUTTON_DOWN2,3:channels.BUTTON_DOWN3,4:channels.BUTTON_DOWN4},
+		ElevatorStructs.Comand:map[int]int{1:channels.BUTTON_COMMAND1,2:channels.BUTTON_COMMAND2,3:channels.BUTTON_COMMAND3,4:channels.BUTTON_COMMAND4}}
 	return button_channel_map
 	
 }
 
-func getButtonChannel(floor int, lamp ButtonType) (int, error) {
+func getButtonChannel(floor int, lamp ElevatorStructs.ButtonType) (int, error) {
 	if button_channel_map[lamp][floor] == 0{
 		return 0, errors.New("Index out of bounds error 001")
 	}
@@ -92,7 +92,7 @@ func ElevSetMotorDirection(dir MotorDir){
 	}
 }
 
-func ElevSetButtonLamp(button ButtonType, floor int, value int) error{
+func ElevSetButtonLamp(button ElevatorStructs.ButtonType, floor int, value int) error{
 	channel, err := getLampChannel(floor, button)
 	if  err != nil{
 		return err

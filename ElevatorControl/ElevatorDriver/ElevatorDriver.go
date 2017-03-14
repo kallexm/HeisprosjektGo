@@ -14,20 +14,20 @@ import(
 var buttonStatusMap = initButtonStatusMap()
 var lastMeasuredFloor int
 
-func initButtonStatusMap() map[Elev.ButtonType]map[int]int {
-	button_channel_map := map[Elev.ButtonType]map[int]int{
-		Elev.Up:		map[int]int{1:0, 2:0, 3:0, 4:0},
-		Elev.Down:		map[int]int{1:0, 2:0, 3:0, 4:0},
-		Elev.Comand:	map[int]int{1:0, 2:0, 3:0, 4:0}}
+func initButtonStatusMap() map[ElevatorStructs.ButtonType]map[int]int {
+	button_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
+		ElevatorStructs.Up:		map[int]int{1:0, 2:0, 3:0, 4:0},
+		ElevatorStructs.Down:		map[int]int{1:0, 2:0, 3:0, 4:0},
+		ElevatorStructs.Comand:	map[int]int{1:0, 2:0, 3:0, 4:0}}
 	return button_channel_map
 }
 
 
 func pullButtons() ElevatorStructs.ButtonPlacement{
 	for f := 1; f <= Elev.N_FLOORS; f ++{
-		var b Elev.ButtonType
+		var b ElevatorStructs.ButtonType
 		for b =  0; b < Elev.N_BUTTONS; b ++{
-			value,_ := Elev.ElevGetButtonSignal(Elev.ButtonType(b),f)
+			value,_ := Elev.ElevGetButtonSignal(ElevatorStructs.ButtonType(b),f)
 			if value == 1 && buttonStatusMap[b][f] != value{
 				buttonPressed := ElevatorStructs.ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
 				buttonStatusMap[b][f] = 1

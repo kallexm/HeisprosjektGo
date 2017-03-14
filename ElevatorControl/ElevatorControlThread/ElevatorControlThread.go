@@ -112,7 +112,7 @@ func newOrderToElevatorHandler(data []byte){
 		// Do stuff related to order complete
 		//Må legg til tilstandsendring, og starting av lys
 		orderComplete_Ch <- true
-		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor: 0, ButtonType: Elev.Door, Value: 1})
+		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor: 0, ButtonType: ElevatorStructs.Door, Value: 1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	fmt.Println("Ec recived new order: ", newOrder)
@@ -150,7 +150,7 @@ func newFloorReached(floor int){
 		// Do stuff related to order complete
 		//Må legg til tilstandsendring, og starting av lys.
 		orderComplete_Ch <- true 
-		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
+		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:ElevatorStructs.Door,Value:1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	//Send melding om ny etasje, og retning. 
@@ -162,7 +162,7 @@ func newFloorReached(floor int){
 
 
 func closeDoor(){
-	ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor: 0,ButtonType:Elev.Door,Value: 0})
+	ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor: 0,ButtonType:ElevatorStructs.Door,Value: 0})
 	motorDir := ElevatorStatus.DoorTimeOut()
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())

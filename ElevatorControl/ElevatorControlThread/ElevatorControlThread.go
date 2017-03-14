@@ -19,6 +19,7 @@ var reSendOrderTimer_Ch (chan bool)
 var orderComplete_Ch 	(chan bool)
 var from_MsgRelay_Ch 	(<-chan []byte)
 var to_MsgRelay_Ch 		(chan<- []byte)
+var masterOnNet bool
 
 
 func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mutex_Ec_Ch chan bool, ElevCtrl_exit_Ch chan bool) {
@@ -30,6 +31,8 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 
 	from_MsgRelay_Ch 	= from_MsgRelay_Ch_
 	to_MsgRelay_Ch 		= to_MsgRelay_Ch_
+
+	masterOnNet = false
 
 	Elev.ElevInit()
 	go ElevatorDriver.ElevatorPullingThread(getButton_Ch,getFloor_Ch)
@@ -56,7 +59,11 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 			case <- timerFinishedDoor_Ch:
 				closeDoor()
 			case <- reSendOrderTimer_Ch:
-				to_MsgRelay_Ch <- generateMsg(MessageFormat.NEW_ELEVATOR_REQUEST,ElevatorStatus.GetUnconfirmedOrder())
+				unconfirmedOrder, left := ElevatorStatus.GetUnconfirmedOrder()
+				if(left){
+					to_MsgRelay_Ch <- generateMsg(MessageFormat.NEW_ELEVATOR_REQUEST,unconfirmedOrder)
+					go timer.TimerThread(reSendOrderTimer_Ch, 3)
+				}
 			default:
 			}
 			mutex_Ec_Ch <- true
@@ -71,7 +78,14 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 					newOrderToElevatorHandler(data)
 				} else if msgHead.MsgType == MessageFormat.SET_LIGHT {
 					setLightHandler(data)
-				} 
+				} else if msgHead.MsgType == MessageFormat.MASTER_ON_NET{
+					masterOnNet = true
+					to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
+				} else if msgHead.MsgType == MessageFormat.MASTER_NOT_ON_NET{
+					masterOnNet = false
+				} else if msgHead.MsgType == MessageFormat.NEW_ELEVATOR_REQUEST_ACCEPTED{
+					ElevatorStatus.RemoveUnconfirmedOrder()
+				}
 		}
 	}
 	ElevCtrl_exit_Ch <- true
@@ -134,6 +148,9 @@ func setLightHandler(data []byte){
 
 
 func newButtonPressed(button ElevatorStructs.ButtonPlacement){
+	if masterOnNet == false{
+		return
+	}
 	fmt.Println("Buttons presed, floor: ", button.Floor, "button type: ", button.ButtonType)
 	ElevatorStatus.NewUnconfirmedOrder(button)
 	go timer.TimerThread(reSendOrderTimer_Ch, 3)
@@ -153,10 +170,13 @@ func newFloorReached(floor int){
 		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:ElevatorStructs.Door,Value:1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
-	//Send melding om ny etasje, og retning. 
-	to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
-	fmt.Println("Elevator control has send ELVATOR STATUS DATA") 
-}
+	//Send melding om ny etasje, og retning.
+	if masterOnNet{
+		to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
+		fmt.Println("Elevator control has send ELVATOR STATUS DATA") 		
+	}
+} 
+	
 
 
 
@@ -165,5 +185,7 @@ func closeDoor(){
 	ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor: 0,ButtonType:ElevatorStructs.Door,Value: 0})
 	motorDir := ElevatorStatus.DoorTimeOut()
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
-	to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
+	if masterOnNet{
+		to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
+	}	
 }

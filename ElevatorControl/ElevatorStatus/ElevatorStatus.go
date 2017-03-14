@@ -53,8 +53,11 @@ func GetCurentOrder() ElevatorStructs.Order{
 
 
 
-func GetUnconfirmedOrder() ElevatorStructs.Order{
-	return unconfirmedOrder[0]
+func GetUnconfirmedOrder() (ElevatorStructs.Order, bool){
+	if len(unconfirmedOrder) == 0{
+		return ElevatorStructs.Order{}, false
+	}
+	return unconfirmedOrder[0], true
 }
 
 
@@ -68,7 +71,7 @@ func NewUnconfirmedOrder(newUnconfirmedOrder ElevatorStructs.ButtonPlacement){
 
 
 
-func removeUnconfirmedOrder(){
+func RemoveUnconfirmedOrder(){
 	unconfirmedOrder = unconfirmedOrder[1:]
 }
 

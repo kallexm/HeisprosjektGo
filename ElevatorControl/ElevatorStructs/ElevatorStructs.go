@@ -22,9 +22,9 @@ import(
 //Data types from Elev
 type ButtonType int
 const(
-	Up ButtonType = iota
+	Down ButtonType = iota -1
 	Comand
-	Down
+	Up
 	Door
 )
 

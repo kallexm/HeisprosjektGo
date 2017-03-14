@@ -16,9 +16,9 @@ const(
 //Byttes plass på Comand og Down, ver OBS! på feil som kan følge av dette.
 type OrderType_t int
 const(
-	Up = iota
+	Down = iota -1 
 	Comand 
-	Down
+	Up
 )
 
 type Id_t int

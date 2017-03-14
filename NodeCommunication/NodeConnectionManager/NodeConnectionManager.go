@@ -70,23 +70,26 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	
 	RoutingTable_Ch		:= make(chan *NodeRoutingTable.RoutingTable_t, 1)
 	routingTable_ptr	:= NodeRoutingTable.Get_reference_to_routing_table()
-	routingTable_ptr.Add_new_routing_entries(NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
-																			 	IsOrderDist:	true 						,
-																			 	Receive_Ch:		from_OrderDist_Ch			,
-																			 	Send_Ch: 		to_OrderDist_Ch				,
-																			 	Mutex_Ch:		OrderDist_NodeComm_Mutex_Ch	}	,
 
-											 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
-											 								 	IsElev:			true 						,
-											 								 	Receive_Ch:		from_ElevCtrl_Ch			,
-											 								 	Send_Ch:		to_ElevCtrl_Ch				,
-											 								 	Mutex_Ch:		ElevCtrl_NodeComm_Mutex_Ch	}	,
+	routingTable_ptr.Add_new_routing_entries(
+		NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
+										 	IsOrderDist:	true 						,
+										 	Receive_Ch:		from_OrderDist_Ch			,
+										 	Send_Ch: 		to_OrderDist_Ch				,
+										 	Mutex_Ch:		OrderDist_NodeComm_Mutex_Ch	}	,
 
-											 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
-											 									IsNet:			true 						,
-											 									Receive_Ch:		nodeComm_to_MsgRelay_Ch		,
-											 									Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
-											 									Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
+		 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
+		 								 	IsElev:			true 						,
+		 								 	Receive_Ch:		from_ElevCtrl_Ch			,
+		 								 	Send_Ch:		to_ElevCtrl_Ch				,
+		 								 	Mutex_Ch:		ElevCtrl_NodeComm_Mutex_Ch	}	,
+
+		 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
+		 									IsNet:			true 						,
+		 									Receive_Ch:		nodeComm_to_MsgRelay_Ch		,
+		 									Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
+		 									Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
+	
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
 
@@ -127,9 +130,11 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 					nodeConnectionState = STATE_MASTER
 
 				}else{
-					newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	NodeID: IDofNewConnectedNode	,
-																		IsExtern: true					,
-																		IsMaster: true					}
+					newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	
+						NodeID: IDofNewConnectedNode,
+						IsExtern: true				,
+						IsMaster: true				}
+
 					handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
 					err := setMasterNodeInTable(IDofNewConnectedNode, RoutingTable_Ch)
 					notifyElevAboutMasterStatus(true, nodeID, nodeID, nodeComm_to_MsgRelay_Ch, nodeComm_MsgRelay_Mutex_Ch)

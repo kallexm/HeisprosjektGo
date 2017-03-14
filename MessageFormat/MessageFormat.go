@@ -45,6 +45,7 @@ const (
 	CHANGE_TO_SLAVE
 	MASTER_ON_NET
 	MASTER_NOT_ON_NET
+	MERGE_ORDERS_REQUEST
 )
 
 type MessageHeader_t struct {

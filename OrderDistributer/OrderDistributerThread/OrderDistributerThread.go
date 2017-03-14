@@ -111,6 +111,8 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					// If no:  generate a new elevator struct for that id, if struct not in
 					// 		   activated elevator structs. Ignore if in activated elevator structs.
 
+					// Add ability to merge
+
 				case MessageFormat.NODE_DISCONNECTED:
 					fmt.Println("NODE_DISCONNECTED:", uint8(data[0]))
 					OrderQueue.RemoveElevator(int(data[0]))
@@ -127,6 +129,11 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 				case MessageFormat.CHANGE_TO_SLAVE:
 					fmt.Println("CHANGE_TO_SLAVE")
 					orderDistributerState = STATE_SLAVE
+
+				case MessageFormat.MERGE_ORDERS_REQUEST:
+					fmt.Println("MERGE_ORDERS_REQUEST")
+					slaveOrders := decodeMergeOrdersRequest(resciveMsgHeader, data)
+					OrderQueue.MergeOrderFromSlave(slaveOrders.elevators, slaveOrders.disabeledElevators, slaveOrders.orders)
 				}
 
 				if resciveMsgHeader.From == MessageFormat.ELEVATOR {
@@ -168,7 +175,8 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 				switch  resciveMsgHeader.MsgType {
 				case MessageFormat.BACKUP_DATA_TRANSFER:
 					fmt.Println("BACKUP_DATA_TRANSFER")
-					// Implement
+					backupData := decodeBackupDataTransfer(resciveMsgHeader, data)
+					OrderQueue.BackupWrite(backupData.elevators, backupData.disabeledElevators, backupData.orders, backupData.orderIdNr)
 
 				case MessageFormat.CHANGE_TO_MASTER:
 					fmt.Println("CHANGE_TO_MASTER")
@@ -226,11 +234,29 @@ func sendBackupToSlave(to_NodeComm_Ch chan<- 	[]byte){
 
 func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data []byte) ElevatorStructs.Order{
 	var newOrder ElevatorStructs.Order
-	if err:= json.Unmarshal(data, &newOrder); err != nil{
+	if err:= json.Unmarshal(data, &newOrder); err != nil {
 		fmt.Println("Error in decodeNewElevatorRequest: ", err)
 	}
 	return newOrder
 }
+
+func decodeBackupDataTransfer(msgHeader MessageFormat.MessageHeader_t, data []byte) backUpStruct {
+	var backupData backUpStruct
+	if err := json.Unmarshal(data, &backupData); err != nil {
+		fmt.Println("Error in decodeBackupDataTransfer: ", err)
+	}
+	return backupData
+}
+
+
+func decodeMergeOrdersRequest(msgHeader MessageFormat.MessageHeader_t, data []byte)	backUpStruct {
+	var slaveOrders backUpStruct
+	if err := json.Unmarshal(data, &slaveOrders); err != nil {
+		fmt.Println("Error in decodeMergeOrdersRequest: ", err)
+	}
+	return slaveOrders
+}
+
 
 func setLights(floor int, value int, orderType OrderQueue.OrderType_t, id OrderQueue.Id_t, to_NodeComm_Ch chan<- 	[]byte){
 	fmt.Println("Starting set lights")

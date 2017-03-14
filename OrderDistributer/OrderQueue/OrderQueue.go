@@ -13,23 +13,23 @@ const(
 
 
 )
-
+//Byttes plass på Comand og Down, ver OBS! på feil som kan følge av dette.
 type OrderType_t int
 const(
-	Up = iota 
+	Up = iota
+	Comand 
 	Down
-	Comand
 )
 
 type Id_t int
 
 type State_t int
 const(
-	idel = iota
-	doorOpen 
+	Idel = iota
+	DoorOpen 
 	StateUp
 	StateDown
-	malfunction
+	Malfunction
 )
 
 type Elev struct{
@@ -142,8 +142,16 @@ func GetOrders() []Order{
 	return orders
 }
 
+func GetOrderIdNr() int{
+	return orderIdNr
+}
 
 func ChangeElevatorPosition(id int, position Position){
 	elevators[Id_t(id)] = elevators[Id_t(id)].changePosition(position)
+}
+
+func OrderCompleet( id int) {
+	RemoveOrder(*(elevators[Id_t(id)].CurentOrder))
+	elevators[Id_t(id)] = elevators[Id_t(id)].ChangeCurentOrder(&Order{})
 }
 

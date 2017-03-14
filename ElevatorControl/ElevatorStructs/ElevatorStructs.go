@@ -5,6 +5,15 @@ import(
 	"../ElevatorDriver/simulator/client"
 )
 
+//Data types from Elev
+type ButtonType int
+const(
+	Up ButtonType = iota
+	Comand
+	Down
+	Door
+)
+
 //Struckt originaly from Driver
 type ButtonPlacement struct{
 	Floor 		int

@@ -17,7 +17,7 @@ func TimerThred(startTimerCh <-chan int, timerFinishedCh chan<- bool) {
 	}
 }
 
-func TimerThredTwo(timerFinishedCh chan<- bool, time_ int){
+func TimerThreadTwo(timerFinishedCh chan<- bool, time_ int){
 	timer := time.NewTimer(time.Second *time.Duration(time_))
 	<- timer.C
 	timerFinishedCh <- true

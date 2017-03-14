@@ -10,8 +10,8 @@ import
 )
 
 
-var lamp_channel_map = initLampChannelsMap()
-var button_channel_map = initButtonChannelsMap()
+var lamp_channel_map 	= initLampChannelsMap()
+var button_channel_map 	= initButtonChannelsMap()
 const N_FLOORS = 4
 const N_BUTTONS = 3
 const MOTOR_SPEED = 2800
@@ -26,7 +26,7 @@ const(
 
 type MotorDir int
 const(
-	DirDown = iota -1 
+	DirDown = iota -1
 	DirStop
 	DirUp
 
@@ -66,13 +66,13 @@ func getButtonChannel(floor int, lamp ButtonType) (int, error) {
 }
 
 func ElevInit() error{
-	initSucces := io.Io_init()
-	if(initSucces != 1){
+	initSuccess := io.Io_init()
+	if(initSuccess != 1){
 		return errors.New("Unable to initialize elevator error 002")
 	}
-	for f := 1; f < N_FLOORS; f++{
+	for f := 1; f < N_FLOORS; f++ {
 		var b ButtonType
-		for b  = 0; b < N_BUTTONS; b++{
+		for b  = 0; b < N_BUTTONS; b++ {
 			if err := ElevSetButtonLamp(b,f,0); err != nil {
 				fmt.Println("f: ",f,"b: ", b)
 				return err

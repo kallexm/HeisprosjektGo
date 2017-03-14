@@ -2,8 +2,8 @@ package MessageFormat
 /*
 ||	File: MessageFormat
 ||
-||	Author:  Andreas Hanssen Moltumyr	
-||	Partner: Martin Mostad
+||	Authors: 
+||
 ||	Date: 	 Spring 2017
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
@@ -52,6 +52,9 @@ type MessageHeader_t struct {
 	MsgType 	MsgType_t
 }
 
+
+
+
 func Encode_msg(msgHead MessageHeader_t, data []byte) ([]byte, error) {
 	var msg []byte
 	var err error
@@ -61,6 +64,8 @@ func Encode_msg(msgHead MessageHeader_t, data []byte) ([]byte, error) {
 	msg = append(msg, data...)
 	return msg, err
 }
+
+
 
 
 func Decode_msg(msg []byte) (MessageHeader_t, []byte, error) {

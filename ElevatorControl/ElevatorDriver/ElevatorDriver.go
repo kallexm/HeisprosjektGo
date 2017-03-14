@@ -16,7 +16,7 @@ import(
 }*/
 
 var buttonStatusMap = initButtonStatusMap()
-var lastMesuredFloor int
+var lastMeasuredFloor int
 
 func initButtonStatusMap() map[Elev.ButtonType]map[int]int {
 	button_channel_map := map[Elev.ButtonType]map[int]int{
@@ -27,7 +27,7 @@ func initButtonStatusMap() map[Elev.ButtonType]map[int]int {
 }
 
 
-func pullButons() ElevatorStructs.ButtonPlacement{
+func pullButtons() ElevatorStructs.ButtonPlacement{
 	for f := 1; f <= Elev.N_FLOORS; f ++{
 			var b Elev.ButtonType
 			for b =  0; b < Elev.N_BUTTONS; b ++{
@@ -35,9 +35,9 @@ func pullButons() ElevatorStructs.ButtonPlacement{
 				/*if value, err := Elev.ElevGetButtonSignal(Elev.ButtonType(b),f); err != nil{
 					fmt.Println("Noeg gikk galt i button pulling err: ", err)*/
 				/*} else*/ if value == 1 && buttonStatusMap[b][f] != value{
-					buttonPresed := ElevatorStructs.ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
+					buttonPressed := ElevatorStructs.ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
 					buttonStatusMap[b][f] = 1
-					return buttonPresed
+					return buttonPressed
 				} else if value == 0{
 					buttonStatusMap[b][f] = 0
 				}
@@ -48,20 +48,20 @@ func pullButons() ElevatorStructs.ButtonPlacement{
 
 
 func ElevatorPullingThred(getButtonCh chan<- ElevatorStructs.ButtonPlacement, getFloorCh chan<- int){
-	lastMesuredFloor = 0
+	lastMeasuredFloor = 0
 	fmt.Println("ElevatorPullingThred started foor loop")
 	for{
-		if buttonPresed := pullButons(); buttonPresed != (ElevatorStructs.ButtonPlacement{}){
+		if buttonPressed := pullButtons(); buttonPressed != (ElevatorStructs.ButtonPlacement{}){
 			fmt.Println("En knapp ble trykket inn")
-			getButtonCh <- buttonPresed
+			getButtonCh <- buttonPressed
 		}
-		curentFloor := Elev.ElevGetFloorSensorSignal()
-		if curentFloor != 0 && curentFloor != lastMesuredFloor {
+		currentFloor := Elev.ElevGetFloorSensorSignal()
+		if currentFloor != 0 && currentFloor != lastMeasuredFloor {
 			fmt.Println("Vi kom til en etasje")
-			Elev.ElevSetFloorIdicator(curentFloor)
-			getFloorCh <- curentFloor
+			Elev.ElevSetFloorIdicator(currentFloor)
+			getFloorCh <- currentFloor
 		}
-		lastMesuredFloor = curentFloor
+		lastMeasuredFloor = currentFloor
 		time.Sleep(time.Millisecond*10)
 	}
 }

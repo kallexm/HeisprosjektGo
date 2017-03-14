@@ -41,22 +41,22 @@ const(
 	Dir Dir
 }*/
 
-var curentOrder ElevatorStructs.Order;
-var curentState ElevatorStructs.State;
+var currentOrder ElevatorStructs.Order;
+var currentState ElevatorStructs.State;
 var unconfirmedOrder []ElevatorStructs.Order;
-var curentPosition ElevatorStructs.Position;
-var timerDoorchanel chan bool;
+var currentPosition ElevatorStructs.Position;
+var timerDoorchannel chan bool;
 
 func GetState() ElevatorStructs.State {
-	return curentState
+	return currentState
 }
 
 func GetPosition() ElevatorStructs.Position{
-	return curentPosition
+	return currentPosition
 }
 
 func GetCurentOrder() ElevatorStructs.Order{
-	return curentOrder
+	return currentOrder
 }
 
 func GetUnconfirmedOrder() ElevatorStructs.Order{
@@ -75,78 +75,78 @@ func removeUnconfirmedOrder(){
 }
 //kalles om heisen sluter å fungerer
 func SetStateMalfunction(){
-	curentState = ElevatorStructs.Malfunction
+	currentState = ElevatorStructs.Malfunction
 }
 //Kalles når modulen får en ny ordere fra master. Retunerer retningen heise må kjøre for å fulføre orderen
 //retunerer en error dersom heisen allerede har en ordere ettersom den kun kan ha 1. 
 //retunerer en boolsk variabel om orderen er øyeblikelig utført. Vi står i riktig etasje
 //vill det reelt kunne skje noen gang? Skall det være tilat?
-func NewCurentOrder(newCurentOrder ElevatorStructs.Order) (ElevatorStructs.Dir, error, bool){
+func NewCurentOrder(newCurrentOrder ElevatorStructs.Order) (ElevatorStructs.Dir, error, bool){
 	//Fjer denne if statmenten, order distrutubotoren skall kunne overskrive over ordere. 
-	/*if (curentOrder != Order{}){
+	/*if (currentOrder != Order{}){
 		return -2, errors.New("Kan kun ha en ordere om gangen error 005"), false 
 	}*/
-	if curentState == ElevatorStructs.DoorOpen{
-		curentOrder = newCurentOrder
+	if currentState == ElevatorStructs.DoorOpen{
+		currentOrder = newCurrentOrder
 		return ElevatorStructs.DirNon, nil, false
 	}
-	if (newCurentOrder.Floor == curentPosition.Floor && curentPosition.Dir == ElevatorStructs.DirNon){
-		curentState = ElevatorStructs.DoorOpen
+	if (newCurrentOrder.Floor == currentPosition.Floor && currentPosition.Dir == ElevatorStructs.DirNon){
+		currentState = ElevatorStructs.DoorOpen
 		//starter en timer
-		go timer.TimerThredTwo(timerDoorchanel,2)
+		go timer.TimerThreadTwo(timerDoorchannel,2)
 		return ElevatorStructs.DirNon, nil, true
-	} else if newCurentOrder.Floor > curentPosition.Floor{
-		curentOrder = newCurentOrder
-		curentState = ElevatorStructs.Up
-		curentPosition.Dir = ElevatorStructs.DirUp
+	} else if newCurrentOrder.Floor > currentPosition.Floor{
+		currentOrder 		= newCurrentOrder
+		currentState 		= ElevatorStructs.Up
+		currentPosition.Dir = ElevatorStructs.DirUp
 		return ElevatorStructs.DirUp, nil, false
 	} else{
-		curentOrder = newCurentOrder
-		curentState = ElevatorStructs.Down
-		curentPosition.Dir = ElevatorStructs.DirDown
+		currentOrder 		= newCurrentOrder
+		currentState 		= ElevatorStructs.Down
+		currentPosition.Dir = ElevatorStructs.DirDown
 		return ElevatorStructs.DirDown, nil, false
 	}
 }
 
-//Kalles når heisen kommer til en ny etasje. retunerer retningen heise skall ta
+//Kalles når heisen kommer til en ny etasje. retunerer retningen heise skal ta
 //Det skjer heisen har kommet til en etasje den har en ordere på. 
 func NewFloor(floor int) (ElevatorStructs.Dir, bool){
-	curentPosition.Floor = floor
-	if floor == curentOrder.Floor{
-		curentPosition.Dir = ElevatorStructs.DirNon
-		curentOrder = ElevatorStructs.Order{}
-		curentState = ElevatorStructs.DoorOpen
+	currentPosition.Floor = floor
+	if floor == currentOrder.Floor{
+		currentPosition.Dir = ElevatorStructs.DirNon
+		currentOrder 		= ElevatorStructs.Order{}
+		currentState 		= ElevatorStructs.DoorOpen
 		//starter en timer
-		go timer.TimerThredTwo(timerDoorchanel,2)
+		go timer.TimerThreadTwo(timerDoorchannel,2)
 		return ElevatorStructs.DirNon, true
 	}
-	return curentPosition.Dir, false
+	return currentPosition.Dir, false
 }
 
 
-//kalles om timeren til door har timet ut. Retunerer den nye retningen til heisen
+//kalles om timeren til door har timet ut. Returnerer den nye retningen til heisen
 func DoorTimeOut()ElevatorStructs.Dir{
-	if (curentOrder == ElevatorStructs.Order{}){
-		curentState = ElevatorStructs.Idel
-		curentPosition.Dir = ElevatorStructs.DirNon
+	if (currentOrder == ElevatorStructs.Order{}){
+		currentState = ElevatorStructs.Idel
+		currentPosition.Dir = ElevatorStructs.DirNon
 		return ElevatorStructs.DirNon
-	} else if curentOrder.Floor > curentPosition.Floor{
-		curentState = ElevatorStructs.Up
-		curentPosition.Dir = ElevatorStructs.DirUp
+	} else if currentOrder.Floor > currentPosition.Floor{
+		currentState = ElevatorStructs.Up
+		currentPosition.Dir = ElevatorStructs.DirUp
 		return ElevatorStructs.DirUp
 	} else {
-		curentState = ElevatorStructs.Down
-		curentPosition.Dir = ElevatorStructs.DirDown
+		currentState = ElevatorStructs.Down
+		currentPosition.Dir = ElevatorStructs.DirDown
 		return ElevatorStructs.DirDown
 	}
 }
 
 
 func InitElevatorStatus(timerDoorch chan bool) {
-	timerDoorchanel = timerDoorch
-	curentPosition = ElevatorStructs.Position{}
-	curentOrder = ElevatorStructs.Order{}
-	curentState = ElevatorStructs.Down
+	timerDoorchannel = timerDoorch
+	currentPosition = ElevatorStructs.Position{}
+	currentOrder = ElevatorStructs.Order{}
+	currentState = ElevatorStructs.Down
 	unconfirmedOrder = []ElevatorStructs.Order{}
 }
 

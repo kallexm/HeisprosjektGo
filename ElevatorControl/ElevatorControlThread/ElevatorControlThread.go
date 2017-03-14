@@ -18,16 +18,16 @@ import
 }*/
 
 var timerFinishedunconfirmedOrderCh (chan bool)
-var orderComplet_Ch (chan bool)
+var orderComplete_Ch (chan bool)
 var main_To_Elev_ch (<-chan []byte)
 var Elev_To_main (chan <-[]byte)
 
 func Thread(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_Ec_Ch chan bool, ElevCtrl_exit_Ch chan bool) {
-	getButtonCh := make(chan ElevatorStructs.ButtonPlacement)
-	getFloorCh := make(chan int)
-	timerFinishedDoorCh := make(chan bool)
+	getButtonCh 					:= make(chan ElevatorStructs.ButtonPlacement)
+	getFloorCh 						:= make(chan int)
+	timerFinishedDoorCh 			:= make(chan bool)
 	timerFinishedunconfirmedOrderCh := make(chan bool)
-	orderComplet_Ch := make(chan bool,1)
+	orderComplete_Ch 				:= make(chan bool,1)
 	//Stykkt finnpå bedre variable navn
 	main_To_Elev_ch = main_To_Elev_ch_
 	Elev_To_main = Elev_To_main_
@@ -45,18 +45,18 @@ func Thread(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_E
 		case <- mutex_Ec_Ch:
 			//fmt.Println("Controll has the Ec mutex")
 			select{	
-			case <- orderComplet_Ch:
+			case <- orderComplete_Ch:
 				Elev_To_main <- generateMsg(MessageFormat.ORDER_FINISHED_BY_ELEVATOR,ElevatorStructs.OrderCompletStruck{OrderComplet: true})
-			case getButton := <- getButtonCh:
-				newButtonPresed(getButton)
-			case getFloor := <- getFloorCh:
+			case getButton 	:= <- getButtonCh:
+				newButtonPressed(getButton)
+			case getFloor 	:= <- getFloorCh:
 				newFloorReached(getFloor)
 			case <- timerFinishedDoorCh:
-				cloaseDoor()
+				closeDoor()
 			case <- timerFinishedunconfirmedOrderCh:
 				Elev_To_main <- generateMsg(MessageFormat.NEW_ELEVATOR_REQUEST,ElevatorStatus.GetUnconfirmedOrder())
 			default:
-				//is nessasary so to prevent dedlocks. If it is not presant, we can be stuck in the case statement.   
+				//is nessasary so to prevent deadlocks. If it is not presant, we can be stuck in the case statement.   
 			}
 			//fmt.Println("Controll releases the Ec mutex")
 			mutex_Ec_Ch <- true
@@ -68,9 +68,9 @@ func Thread(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_E
 					fmt.Println("Error in decoding: ", err)
 				}
 				if msgHead.MsgType == MessageFormat.NEW_ORDER_TO_ELEVATOR{
-					newOrderToElevatorHandeler(data)
+					newOrderToElevatorHandler(data)
 				} else if msgHead.MsgType == MessageFormat.SET_LIGHT{
-					setLightHandeler(data)
+					setLightHandler(data)
 				} 
 		default:
 			//is nessasary so to prevent dedlocks. If it is not presant, we can be stuck in the case statement.   
@@ -84,7 +84,7 @@ func generateMsg(msgType MessageFormat.MsgType_t, inputStruct interface{}) []byt
 	msgHeader := MessageFormat.MessageHeader_t{To: MessageFormat.MASTER,From: MessageFormat.ELEVATOR,MsgType:msgType}
 	data, err := json.Marshal(inputStruct)
 	if err != nil{
-		fmt.Println("Error in GereateMsg")
+		fmt.Println("Error in GenerateMsg")
 	}
 	msg, err := MessageFormat.Encode_msg(msgHeader, data)
 	if err != nil{
@@ -94,7 +94,7 @@ func generateMsg(msgType MessageFormat.MsgType_t, inputStruct interface{}) []byt
 	
 }
 
-func newOrderToElevatorHandeler(data []byte){
+func newOrderToElevatorHandler(data []byte){
 	var newOrder ElevatorStructs.Order
 	if err := json.Unmarshal(data, &newOrder); err != nil{
 		fmt.Println("Error in Unmarshal: ", err)
@@ -105,14 +105,14 @@ func newOrderToElevatorHandeler(data []byte){
 	} else if orderComplet == true{
 		// Do stof related to order compleat
 		//Må legg til tilstandsendring, og starting av lys
-		orderComplet_Ch <- true
+		orderComplete_Ch <- true
 		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	fmt.Println("Ec recived new order: ", newOrder)
 }
 
-func setLightHandeler(data []byte){
+func setLightHandler(data []byte){
 	var button ElevatorStructs.ButtonPlacement
 	if err := json.Unmarshal(data, &button); err != nil{
 		fmt.Println("Error in MsgType SET_LITGHT", err)
@@ -121,10 +121,10 @@ func setLightHandeler(data []byte){
 	fmt.Println("Ec handelde new set ligt request ", button)
 }
 
-func newButtonPresed(button ElevatorStructs.ButtonPlacement){
+func newButtonPressed(button ElevatorStructs.ButtonPlacement){
 	fmt.Println("Buttons presed, floor: ", button.Floor, "button type: ", button.ButtonType)
 	ElevatorStatus.NewUnconfirmedOrder(button)
-	go timer.TimerThredTwo(timerFinishedunconfirmedOrderCh,3)
+	go timer.TimerThreadTwo(timerFinishedunconfirmedOrderCh,3)
 	Elev_To_main <- generateMsg(MessageFormat.NEW_ELEVATOR_REQUEST,ElevatorStructs.Order{Floor: button.Floor, OrderDir: ElevatorStructs.Dir(button.ButtonType)})
 }
 
@@ -134,7 +134,7 @@ func newFloorReached(floor int){
 	if orderComplet == true{
 		// Do stof related to order compleat
 		//Må legg til tilstandsendring, og starting av lys.
-		orderComplet_Ch <- true 
+		orderComplete_Ch <- true 
 		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
@@ -144,7 +144,7 @@ func newFloorReached(floor int){
 }
 
 
-func cloaseDoor(){
+func closeDoor(){
 	ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:0})
 	motorDir := ElevatorStatus.DoorTimeOut()
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))

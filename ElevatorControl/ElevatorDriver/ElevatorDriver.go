@@ -6,13 +6,14 @@ import(
 	"./simulator/client"
 	"fmt"
 	"time"
+	"../ElevatorStructs"
 )
 
-type ButtonPlacement struct{
+/*type ButtonPlacement struct{
 	Floor int
 	ButtonType Elev.ButtonType
 	Value int 
-}
+}*/
 
 var buttonStatusMap = initButtonStatusMap()
 var lastMesuredFloor int
@@ -26,7 +27,7 @@ func initButtonStatusMap() map[Elev.ButtonType]map[int]int {
 }
 
 
-func pullButons() ButtonPlacement{
+func pullButons() ElevatorStructs.ButtonPlacement{
 	for f := 1; f <= Elev.N_FLOORS; f ++{
 			var b Elev.ButtonType
 			for b =  0; b < Elev.N_BUTTONS; b ++{
@@ -34,7 +35,7 @@ func pullButons() ButtonPlacement{
 				/*if value, err := Elev.ElevGetButtonSignal(Elev.ButtonType(b),f); err != nil{
 					fmt.Println("Noeg gikk galt i button pulling err: ", err)*/
 				/*} else*/ if value == 1 && buttonStatusMap[b][f] != value{
-					buttonPresed := ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
+					buttonPresed := ElevatorStructs.ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
 					buttonStatusMap[b][f] = 1
 					return buttonPresed
 				} else if value == 0{
@@ -42,15 +43,15 @@ func pullButons() ButtonPlacement{
 				}
 			} 
 	}
-	return ButtonPlacement{} 
+	return ElevatorStructs.ButtonPlacement{} 
 }
 
 
-func ElevatorPullingThred(getButtonCh chan<- ButtonPlacement, getFloorCh chan<- int){
+func ElevatorPullingThred(getButtonCh chan<- ElevatorStructs.ButtonPlacement, getFloorCh chan<- int){
 	lastMesuredFloor = 0
 	fmt.Println("ElevatorPullingThred started foor loop")
 	for{
-		if buttonPresed := pullButons(); buttonPresed != (ButtonPlacement{}){
+		if buttonPresed := pullButons(); buttonPresed != (ElevatorStructs.ButtonPlacement{}){
 			fmt.Println("En knapp ble trykket inn")
 			getButtonCh <- buttonPresed
 		}
@@ -65,7 +66,7 @@ func ElevatorPullingThred(getButtonCh chan<- ButtonPlacement, getFloorCh chan<- 
 	}
 }
 
-func SetLight(button ButtonPlacement){
+func SetLight(button ElevatorStructs.ButtonPlacement){
 	if button.ButtonType < 3{
 		if err := Elev.ElevSetButtonLamp(button.ButtonType,button.Floor, button.Value); err != nil{
 			fmt.Println(err)

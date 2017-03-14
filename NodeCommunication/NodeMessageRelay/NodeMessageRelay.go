@@ -23,10 +23,11 @@ import
 )
 
 
-
-
 var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 var masterShouldTakeMutexNext = false
+
+
+
 
 func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 	for {

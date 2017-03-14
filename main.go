@@ -22,6 +22,7 @@ import
 	"./ElevatorControl/ElevatorControlThread"
 	"./NodeCommunication/NodeConnectionManager"
 	"./OrderDistributer/OrderDistributerThread"
+
 	
 	"fmt"
 )
@@ -63,7 +64,6 @@ func main() {
 										ElevCtrl_to_NodeComm_Ch		,
 										ElevCtrl_NodeComm_Mutex_Ch	,
 	                                	ElevCtrl_exit_Ch        	)
-	
 	
 	
 	if <- NodeComm_exit_Ch {

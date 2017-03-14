@@ -45,6 +45,7 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 	for {
 		select{
 		case <- mutex_Ec_Ch:
+			//fmt.Println("Fikk mutex_Ec_Ch")
 			select{	
 			case <- orderComplete_Ch:
 				to_MsgRelay_Ch <- generateMsg(MessageFormat.ORDER_FINISHED_BY_ELEVATOR,ElevatorStructs.OrderCompletStruck{OrderComplet: true})
@@ -71,7 +72,6 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 				} else if msgHead.MsgType == MessageFormat.SET_LIGHT {
 					setLightHandler(data)
 				} 
-		default:
 		}
 	}
 	ElevCtrl_exit_Ch <- true

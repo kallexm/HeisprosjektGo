@@ -43,6 +43,8 @@ const (
 	NODE_CONNECTED
 	CHANGE_TO_MASTER
 	CHANGE_TO_SLAVE
+	MASTER_ON_NET
+	MASTER_NOT_ON_NET
 )
 
 type MessageHeader_t struct {

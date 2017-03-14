@@ -38,6 +38,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 	orderDistributerState 		= STATE_SLAVE
 	prev_orderDistributerState 	= STATE_SLAVE
+	OrderQueue.AddElevator(int(nodeID))
 
 	// Code to generate local elevator struct
 	// Code to setup queue
@@ -74,22 +75,25 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					elevators := OrderQueue.GetElevators()
 					order := *(elevators[OrderQueue.Id_t(resciveMsgHeader.FromNodeID)].CurentOrder)
 					OrderQueue.OrderCompleet(int(resciveMsgHeader.FromNodeID))
-					sendBackupToSlave(to_NodeComm_Ch)
 					redistributeOrders(to_NodeComm_Ch)
+					sendBackupToSlave(to_NodeComm_Ch)
 					setLights(order.Floor,0,order.OrderType,OrderQueue.Id_t(resciveMsgHeader.FromNodeID),to_NodeComm_Ch)
 
 					//
 
 				case MessageFormat.NEW_ELEVATOR_REQUEST:
+					//DU må redistrubuerer ordere
 					fmt.Println("NEW_ELEVATOR_REQUEST:", data)
 					newOrder := decodeNewElevatorRequest(resciveMsgHeader, data)
 					OrderQueue.AddOrder(OrderQueue.Order{Floor: newOrder.Floor, OrderType: OrderQueue.OrderType_t(newOrder.OrderDir),})
+					redistributeOrders(to_NodeComm_Ch)
 					sendBackupToSlave(to_NodeComm_Ch)
 					setLights(newOrder.Floor,1,OrderQueue.OrderType_t(newOrder.OrderDir),0,to_NodeComm_Ch)
 					newMsg, err := MessageFormat.Encode_msg(MessageFormat.MessageHeader_t{To: MessageFormat.ELEVATOR, ToNodeID: resciveMsgHeader.FromNodeID, From:MessageFormat.MASTER, MsgType: MessageFormat.NEW_ELEVATOR_REQUEST_ACCEPTED}, []byte{})
 					if err != nil{
 						fmt.Println("Noe gikk galt i lagingen av ACCEPTED meldingen")
 					}
+					fmt.Println("ACCEPTED send")
 					to_NodeComm_Ch <- newMsg
 					// Implement
 
@@ -200,7 +204,7 @@ func generateMsg(msgType MessageFormat.MsgType_t, toNodeId int, to MessageFormat
 	
 }
 
-func redistributeOrders(to_NodeComm_Ch chan<- 	[]byte){
+func redistributeOrders(to_NodeComm_Ch chan<-[]byte){
 	elevators := OrderQueue.GetElevators()
 	ordersToBeAsigned := OrderEvaluator.CalculateOrderAsignment(OrderQueue.GetOrders(), OrderQueue.GetElevators())
 	for id,_ := range ordersToBeAsigned{
@@ -216,6 +220,7 @@ func sendBackupToSlave(to_NodeComm_Ch chan<- 	[]byte){
 	backUp.elevators = OrderQueue.GetElevators()
 	backUp.disabeledElevators = OrderQueue.GetDisabeledElevators()
 	backUp.orderIdNr = OrderQueue.GetOrderIdNr()
+	fmt.Println("Backup to slave send")
 	to_NodeComm_Ch <- generateMsg(MessageFormat.BACKUP_DATA_TRANSFER,0,MessageFormat.BACKUP, backUp)
 }
 
@@ -228,12 +233,15 @@ func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data []by
 }
 
 func setLights(floor int, value int, orderType OrderQueue.OrderType_t, id OrderQueue.Id_t, to_NodeComm_Ch chan<- 	[]byte){
+	fmt.Println("Starting set lights")
 	if ( orderType == OrderQueue.Comand){
+		fmt.Println("set lights send")
 		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType: ElevatorStructs.Comand, Value: value})
 		return
 	}
 	elevators := OrderQueue.GetElevators()
 	for id, _ := range elevators{
+		fmt.Println("set lights send")
 		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType: ElevatorStructs.ButtonType(orderType), Value: value})
 	}
 	

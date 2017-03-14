@@ -5,6 +5,7 @@ import(
 	"../ElevatorDriver/simulator/client"
 )
 
+
 //Data types from Elev
 type ButtonType int
 const(
@@ -39,7 +40,7 @@ const(
 )
 
 
-//Struckt from Status
+//Struct from Status
 type Order struct{
 	Floor 	 int 
 	OrderDir Dir
@@ -50,7 +51,7 @@ type Position struct{
 	Dir 	 Dir
 }
 
-//STruckt from ControlThred
+//Struct from ControlThread
 type OrderCompletStruck struct{
 	OrderComplet bool
 }

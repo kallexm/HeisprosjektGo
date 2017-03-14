@@ -21,9 +21,9 @@ const(
 )
 
 type backUpStruct struct{
-	elevators map[Id_t]Elev
-	disabeledElevators map[Id_t]Elev
-	orders []Order
+	elevators map[OrderQueue.Id_t]OrderQueue.Elev
+	disabeledElevators map[OrderQueue.Id_t]OrderQueue.Elev
+	orders []OrderQueue.Order
 	orderIdNr int
 }
 
@@ -71,16 +71,26 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 				switch resciveMsgHeader.MsgType {
 				case MessageFormat.ORDER_FINISHED_BY_ELEVATOR:
 					fmt.Println("ORDER_FINISHED_BY_ELEVATOR:", data)
+					elevators := OrderQueue.GetElevators()
+					order := *(elevators[OrderQueue.Id_t(resciveMsgHeader.FromNodeID)].CurentOrder)
 					OrderQueue.OrderCompleet(int(resciveMsgHeader.FromNodeID))
 					sendBackupToSlave(to_NodeComm_Ch)
 					redistributeOrders(to_NodeComm_Ch)
+					setLights(order.Floor,0,order.OrderType,OrderQueue.Id_t(resciveMsgHeader.FromNodeID),to_NodeComm_Ch)
+
 					//
 
 				case MessageFormat.NEW_ELEVATOR_REQUEST:
 					fmt.Println("NEW_ELEVATOR_REQUEST:", data)
-					decodeNewElevatorRequest(resciveMsgHeader, data)
+					newOrder := decodeNewElevatorRequest(resciveMsgHeader, data)
+					OrderQueue.AddOrder(OrderQueue.Order{Floor: newOrder.Floor, OrderType: OrderQueue.OrderType_t(newOrder.OrderDir),})
 					sendBackupToSlave(to_NodeComm_Ch)
-
+					setLights(newOrder.Floor,1,OrderQueue.OrderType_t(newOrder.OrderDir),0,to_NodeComm_Ch)
+					newMsg, err := MessageFormat.Encode_msg(MessageFormat.MessageHeader_t{To: MessageFormat.ELEVATOR, ToNodeID: resciveMsgHeader.FromNodeID, From:MessageFormat.MASTER, MsgType: MessageFormat.NEW_ELEVATOR_REQUEST_ACCEPTED}, []byte{})
+					if err != nil{
+						fmt.Println("Noe gikk galt i lagingen av ACCEPTED meldingen")
+					}
+					to_NodeComm_Ch <- newMsg
 					// Implement
 
 				case MessageFormat.ELEVATOR_STATUS_DATA:
@@ -88,7 +98,8 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					// Implement
 
 				case MessageFormat.NODE_CONNECTED:
-					fmt.Println("NODE_CONNECTED:", uint8(data[0]))	
+					fmt.Println("NODE_CONNECTED:", uint8(data[0]))
+					OrderQueue.AddElevator(int(data[0]))	
 					// Implement			
 					// See if one has got an deactivated elevator struct that matches
 					// the id in data (uint8/byte):
@@ -98,6 +109,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 				case MessageFormat.NODE_DISCONNECTED:
 					fmt.Println("NODE_DISCONNECTED:", uint8(data[0]))
+					OrderQueue.RemoveElevator(int(data[0]))
 					// Implement
 					// See if one has got an activated elevator struct that matches
 					// the id in data (unit8/byte):
@@ -200,25 +212,29 @@ func redistributeOrders(to_NodeComm_Ch chan<- 	[]byte){
 
 func sendBackupToSlave(to_NodeComm_Ch chan<- 	[]byte){
 	backUp := backUpStruct{}
-	backUp.orders := OrderQueue.GetOrders()
-	backUp.elevatos := OrderQueue.GetElevators()
-	backUp.disabeledElevators := OrderQueue.GetDisabeledElevators()
-	backUp.orderIdNr := OrderQueue.GetORderIdNr()
+	backUp.orders = OrderQueue.GetOrders()
+	backUp.elevators = OrderQueue.GetElevators()
+	backUp.disabeledElevators = OrderQueue.GetDisabeledElevators()
+	backUp.orderIdNr = OrderQueue.GetOrderIdNr()
 	to_NodeComm_Ch <- generateMsg(MessageFormat.BACKUP_DATA_TRANSFER,0,MessageFormat.BACKUP, backUp)
 }
 
-func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data [byte]){
+func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data []byte) ElevatorStructs.Order{
 	var newOrder ElevatorStructs.Order
-	fi err:= json.Unmarshal(data, &newOrder); err != nil{
+	if err:= json.Unmarshal(data, &newOrder); err != nil{
 		fmt.Println("Error in decodeNewElevatorRequest: ", err)
 	}
-	OrderQueue.AddOrder(OrderQueue.Order{Floor: newOrder.Floor, OrderType: OrderQueue.OrderType_t(newOrder.OrderDir),})
-	
+	return newOrder
 }
 
 func setLights(floor int, value int, orderType OrderQueue.OrderType_t, id OrderQueue.Id_t, to_NodeComm_Ch chan<- 	[]byte){
 	if ( orderType == OrderQueue.Comand){
-		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType:  })
+		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType: ElevatorStructs.Comand, Value: value})
+		return
+	}
+	elevators := OrderQueue.GetElevators()
+	for id, _ := range elevators{
+		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType: ElevatorStructs.ButtonType(orderType), Value: value})
 	}
 	
 }

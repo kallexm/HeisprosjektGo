@@ -37,7 +37,8 @@ const (
 	CLEAR_LIGHT
 	ELEVATOR_STATUS_DATA			//position struct, fra ElevatorControl/ElevatorStatus 
 	NEW_ELEVATOR_REQUEST			//Order struct fra ElevatorControl/ElevatorStatus 
-	ORDER_FINISHED_BY_ELEVATOR		//position struct, fra ElevatorControl/ElevatorStatus 
+	ORDER_FINISHED_BY_ELEVATOR		//position struct, fra ElevatorControl/ElevatorStatus
+	NEW_ELEVATOR_REQUEST_ACCEPTED 
 	NODE_DISCONNECTED
 	NODE_CONNECTED
 	CHANGE_TO_MASTER

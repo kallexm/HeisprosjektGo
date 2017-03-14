@@ -3,7 +3,7 @@ package main
 ||	File: main
 ||
 ||	Author:  Andreas Hanssen Moltumyr	
-||	Partner: Martin Mostad
+||			 Martin Mostad
 ||	Date: 	 Spring 2017
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
@@ -40,9 +40,8 @@ func main() {
 	ElevCtrl_exit_Ch	:= make(chan bool)
 	NodeComm_exit_Ch	:= make(chan bool)
 	
-
+	fmt.Println("Starting Elevator...")
 	nodeID := getNodeIDfromStdIO()
-	fmt.Println("Starting main")
 	
 	
 	go NodeConnectionManager.Thread(	OrderDist_to_NodeComm_Ch	,

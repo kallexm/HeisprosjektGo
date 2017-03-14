@@ -38,8 +38,8 @@ import
 	"math/rand"
 )
 
+
 const broadCastToPort 		= "60002"
-//const broadCastFromPort 	= "60022"
 const useLocalIP 			= false
 
 const randomValueOffset		= 500
@@ -60,16 +60,6 @@ var prev_nodeConnectionState 	nodeConnectionState_t
 
 
 
-
-/*
-|| Thread(...) should be called as a goroutine.
-||		It manages the connections a single elevator node has to all the other elevator nodes which is connected.
-||		This function:
-||			1. Sets up the routing table stored in file/package NodeRoutingTable with inital routing entries.
-||			2. Tries to establish a TCP connection to another node which is listening on port broadCastToPort with the help of UDP broadcasting.
-||			3. Starts to listen for new nodes on the network if it could not find an other node to connect to.
-||			4. Updates the routing table when necessary.
-*/
 
 func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			to_OrderDist_Ch 			chan<- 	[]byte	,
@@ -104,7 +94,6 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 											 									Receive_Ch:		nodeComm_to_MsgRelay_Ch		,
 											 									Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
 											 									Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
-	
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
 
@@ -114,7 +103,6 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	rand.Seed(int64(nodeID)*int64(time.Now().Second()))
 
 	
-	// Start connection Sequence
 	nodeConnectionState 		= STATE_CONNECTING
 	prev_nodeConnectionState 	= STATE_CONNECTING
 	
@@ -125,20 +113,21 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	var nodeConnectedList 		[]uint8
 
 	for {
+		// ==========[ Begin STATE_CONNECTING ]===========
 		if nodeConnectionState == STATE_CONNECTING {
 
-			// ---[ Entry Action ]----
+			// ------[ Entry Action ]-------
 			if prev_nodeConnectionState != nodeConnectionState {
 				fmt.Println("[Enter CONNECTING]")
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
-			// ---[ When in state, do ]----
+			// ------[ When in state, do ]-------
 			if getLocalIP(useLocalIP) == "" {
 				nodeConnectionState = STATE_SINGLE
 			}else{
 				fmt.Println("Connecting to remote node...")
-				conn, IDofNewConnectedNode, err := connect_to_other_Node(false, nodeID)
+				conn, IDofNewConnectedNode, err := connect_to_other_Node(nodeID)
 				if err != nil {
 					checkError(err)
 					fmt.Println("Failed to connect to remote node...")
@@ -159,8 +148,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				}
 			}
 			
-
-			// ---[ Exit Action ]----
+			// ------[ Exit Action ]-------
 			if nodeConnectionState != STATE_CONNECTING {
 				if nodeConnectionState == STATE_MASTER || nodeConnectionState == STATE_SINGLE {
 					select {
@@ -183,7 +171,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				}else if nodeConnectionState == STATE_SLAVE {
 					select {
 					case <- nodeComm_MsgRelay_Mutex_Ch:
-						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST 			,
+						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST 		,
 																	ToNodeID: 	nodeID 							,
 																	From:		MessageFormat.NODE_COM			,
 																	FromNodeID: nodeID 							,
@@ -200,13 +188,15 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 					}
 				}
 			}
+		// ==========[ End STATE_CONNECTING ]===========
 
 
 
 
+		// ==========[ Begin STATE_MASTER ]===========
 		}else if nodeConnectionState == STATE_MASTER {
 			
-			// ---[ Entry Action ]----
+			// ------[ Entry Action ]-------
 			if prev_nodeConnectionState != nodeConnectionState {
 				fmt.Println("[Enter MASTER]")
 				err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
@@ -224,13 +214,13 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				prev_nodeConnectionState = nodeConnectionState
 			}
 			
-			// ---[ When in state, do ]----
+			// ------[ When in state, do ]-------
 			bCastListener.SetReadDeadline(time.Now().Add(1*time.Second))
 			buffer := make([]byte, 32)
 			_, _, err := bCastListener.ReadFromUDP(buffer)
 			if err == nil {
 				nodeIDofBcaster := uint8(buffer[0])
-				tcpListenerAddrOfBcaster := string(buffer[2:])
+				tcpListenerAddrOfBcaster := string(buffer[1:])
 				tcpConn, err := net.DialTimeout("tcp", tcpListenerAddrOfBcaster, 200*time.Millisecond)
 				checkError(err)
 				if err == nil {
@@ -321,17 +311,19 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			}
 
 			
-			// ---[ Exit Action ]----
+			// ------[ Exit Action ]-------
 			if nodeConnectionState != STATE_MASTER {
 				bCastListener.Close()
 			}
+		// ==========[ End STATE_MASTER ]===========
 
 
 
 
+		// ==========[ Begin STATE_SINGLE ]===========
 		}else if nodeConnectionState == STATE_SINGLE {
 
-			// ---[ Entry Action ]----
+			// ------[ Entry Action ]-------
 			if prev_nodeConnectionState != nodeConnectionState {
 				fmt.Println("[Enter SINGLE]")
 				err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
@@ -339,28 +331,28 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
-			// ---[ When in state, do ]----
+			// ------[ When in state, do ]-------
 			if getLocalIP(useLocalIP) != "" {
 				nodeConnectionState = STATE_CONNECTING
 			}
 
-			// ---[ Exit Action ]----
+			// ------[ Exit Action ]-------
 			if nodeConnectionState != STATE_SINGLE {
 				
 			}
+			// ==========[ End STATE_SINGLE ]===========
 
 
-
-
+		// ==========[ Begin STATE_SLAVE ]===========
 		}else if nodeConnectionState == STATE_SLAVE {
 
-			// ---[ Entry Action ]----
+			// ------[ Entry Action ]-------
 			if prev_nodeConnectionState != nodeConnectionState {
 				fmt.Println("[Enter SLAVE]")
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
-			// ---[ When in state, do ]----
+			// ------[ When in state, do ]-------
 			select {
 			case msg := <- MsgRelay_to_nodeComm_Ch:
 				msgHeader, _, err := MessageFormat.Decode_msg(msg)
@@ -388,20 +380,12 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				// Do Nothing
 			}
 
-			// ---[ Exit Action ]----
+			// ------[ Exit Action ]-------
 			if nodeConnectionState != STATE_SLAVE {
 				
 			}
-			
-
-
-
-
-		}else{
-
+		// ==========[ End STATE_SLAVE ]===========
 		}
-
-
 	}
 	NodeComm_exit_Ch <- true	
 }	
@@ -411,39 +395,29 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 
 // Returns a valid connection if a MasterNode was found. Else it returns an error.
-func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8, error){
+func connect_to_other_Node(nodeID uint8) (net.Conn, uint8, error){
 
 	// Setting up a UDP broadcast socket
-	bCastToAddr, err	:= net.ResolveUDPAddr("udp", net.JoinHostPort("255.255.255.255"	, broadCastToPort	))
-	checkError(err)
+	bCastToAddrStr	 	:= net.JoinHostPort("255.255.255.255", broadCastToPort)
+	bCastToAddr, _		:= net.ResolveUDPAddr("udp", bCastToAddrStr)
 	bCastConn, err 		:= net.DialUDP("udp", nil, bCastToAddr)
 	checkError(err)
-	if err == nil {
-
-	}
 	
-	// Setting up a TCP listener socket 
-	listenAddr, err 	:= net.ResolveTCPAddr("tcp", net.JoinHostPort(getLocalIP(useLocalIP), "0"))
-	checkError(err)
-	tcpListener, err 		:= net.ListenTCP("tcp", listenAddr)
+	// Setting up a TCP listener socket
+	listenAddrStr		:= net.JoinHostPort(getLocalIP(useLocalIP), "0")
+	listenAddr, _	 	:= net.ResolveTCPAddr("tcp", listenAddrStr)
+	tcpListener, err 	:= net.ListenTCP("tcp", listenAddr)
 	checkError(err)
 	defer tcpListener.Close()
 	
 	// Make broadcast message
-	bCastMsg := make([]byte, 0)
-	bCastMsg = append(bCastMsg, byte(nodeID))
-	if thisNodeIsMaster == false {
-		bCastMsg = append(bCastMsg, 0x0)
-	}else{
-		bCastMsg = append(bCastMsg, 0x1)
-	}
+	bCastMsg := []byte{byte(nodeID)}
 	bCastMsg = append(bCastMsg, []byte(tcpListener.Addr().String())...)
 	
 	// Generate random SetDeadline wait time
 	randomNumber := time.Duration(rand.Int63n(randomValueInterval) + randomValueOffset)
 
 	// Try to connect
-	fmt.Println("Start connection sequence")
 	i := 0
 	for {
 		_, err 			:= bCastConn.Write(bCastMsg)
@@ -454,7 +428,7 @@ func connect_to_other_Node(thisNodeIsMaster bool, nodeID uint8) (net.Conn, uint8
 		checkError(err)
 		
 		if err == nil {
-			fmt.Println("Established tcp connection:", tcpConn.LocalAddr(), "->", tcpConn.RemoteAddr())
+			fmt.Println("TCP connection:", tcpConn.LocalAddr(), "->", tcpConn.RemoteAddr())
 			buffer 		:= make([]byte, 8)
 			err 	 	 = tcpConn.SetReadDeadline(time.Now().Add(1*time.Second))
 			checkError(err)

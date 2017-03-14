@@ -189,8 +189,10 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			// ------[ Entry Action ]-------
 			if prev_nodeConnectionState != nodeConnectionState {
 				printFromNET("Begin STATE_MASTER", nodeID, nodeConnectionState)
-				err := setMasterNodeInTable(nodeID, RoutingTable_Ch)
-
+				err := setBackupNodeInTable(nodeID, false, RoutingTable_Ch)
+				checkError(err)
+				err = setMasterNodeInTable(nodeID, RoutingTable_Ch)
+				checkError(err)
 				printFromNET("Starts to listen for remote nodes...", nodeID, nodeConnectionState)
 				listenerAddress, err := net.ResolveUDPAddr("udp", ":"+string(BROADCAST_TO_PORT))
 				checkError(err)
@@ -345,6 +347,8 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			// ------[ Entry Action ]-------
 			if prev_nodeConnectionState != nodeConnectionState {
 				printFromNET("Begin STATE_SLAVE", nodeID, nodeConnectionState)
+				err := setBackupNodeInTable(nodeID, true, RoutingTable_Ch)
+				checkError(err)
 				prev_nodeConnectionState = nodeConnectionState
 			}
 
@@ -511,6 +515,20 @@ func setMasterNodeInTable(nodeID uint8, RoutingTable_Ch chan *NodeRoutingTable.R
 
 	routingTable_ptr = <- RoutingTable_Ch
 	err := routingTable_ptr.Set_master_node(nodeID)
+	RoutingTable_Ch <- routingTable_ptr
+	routingTable_ptr = nil
+
+	return err
+}
+
+
+
+
+func setBackupNodeInTable(nodeID uint8, setTo bool, RoutingTable_Ch chan *NodeRoutingTable.RoutingTable_t) error {
+	var routingTable_ptr *NodeRoutingTable.RoutingTable_t
+
+	routingTable_ptr = <- RoutingTable_Ch
+	err := routingTable_ptr.Set_Backup_node(nodeID, setTo)
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
 

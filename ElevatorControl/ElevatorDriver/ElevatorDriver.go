@@ -1,4 +1,16 @@
 package ElevatorDriver
+/*
+||	File: ElevatorDriver.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		Elevator driver
+||
+*/
 
 import(
 	//./Elev"

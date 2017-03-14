@@ -1,4 +1,17 @@
 package ElevatorStructs
+/*
+||	File: ElevatorStructs.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		Contains different elevator data structures
+||		used by the elevator module and the order manager module
+||
+*/
 
 import(
 	//"../ElevatorDriver/Elev"

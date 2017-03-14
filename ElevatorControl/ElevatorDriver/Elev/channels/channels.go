@@ -1,6 +1,16 @@
 package channels
-
-//pragma once
+/*
+||	File: channels.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		Defines the addresses used to interface the elevator firmware/hardware
+||
+*/
 
 
 //in port 4

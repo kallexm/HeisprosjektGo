@@ -1,6 +1,6 @@
 package NodeConnectionManager
 /*
-||	File: NodeConnectionManager 
+||	File: NodeConnectionManager.go
 ||
 ||	Authors:  
 ||

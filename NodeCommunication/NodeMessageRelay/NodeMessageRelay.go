@@ -1,6 +1,6 @@
 package NodeMessageRelay
 /*
-||	File: NodeMessageRelay
+||	File: NodeMessageRelay.go
 ||
 ||	Authors:  
 ||

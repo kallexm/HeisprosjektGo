@@ -1,4 +1,16 @@
 package io 
+/*
+||	File: ioTest/io.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		Test I/O file
+||		
+*/
 
 import (
 	"fmt"

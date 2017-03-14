@@ -1,6 +1,6 @@
 package NodeRoutingTable
 /*
-||	File: NodeRoutingTable
+||	File: NodeRoutingTable.go
 ||
 ||	Authors: 
 ||
@@ -83,17 +83,36 @@ func (rt *RoutingEntry_t) Get_receive_Ch() <-chan []byte {
 
 
 func (rt *RoutingTable_t) Set_master_node(nodeID uint8) error {
-	var	foundnodeIDinTable = false
+	var	foundNodeIDinTable = false
 	for i := 0; i < len(*rt); i++ {
 		if (*rt)[i].IsMaster == true {
 			(*rt)[i].IsMaster = false
 		}
 		if (*rt)[i].NodeID == nodeID && ( (*rt)[i].IsOrderDist == true || (*rt)[i].IsExtern == true ) {
 			(*rt)[i].IsMaster  = true
-			foundnodeIDinTable = true
+			foundNodeIDinTable = true
 		}
 	}
-	if foundnodeIDinTable == false {
+	if foundNodeIDinTable == false {
+		return errors.New("No entry with nodeID in routing table")
+	}else{
+		return nil
+	}
+}
+
+
+
+
+func (rt *RoutingTable_t) Set_Backup_node(nodeID uint8, setTo bool) error {
+	var	foundNodeIDinTable = false
+	for i := 0; i < len(*rt); i++ {
+		if (*rt)[i].NodeID == nodeID && ( (*rt)[i].IsOrderDist == true || (*rt)[i].IsExtern == true ) {
+			(*rt)[i].IsBackup  = setTo
+			foundNodeIDinTable = true
+			break
+		}
+	}
+	if foundNodeIDinTable == false {
 		return errors.New("No entry with nodeID in routing table")
 	}else{
 		return nil

@@ -1,11 +1,25 @@
 package Elev
+/*
+||	File: Elev/Elev.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		Golang version of elev.c
+||
+*/
 
 import 
-(
-	"../../ElevatorStructs"
+(	
 	"./ioTest"
 	//"./io"
+
+	"../../ElevatorStructs"
 	"./channels"
+
 	"errors"
 	"fmt"
 )
@@ -13,9 +27,9 @@ import
 
 var lamp_channel_map 	= initLampChannelsMap()
 var button_channel_map 	= initButtonChannelsMap()
-const N_FLOORS = 4
-const N_BUTTONS = 3
-const MOTOR_SPEED = 2800
+const N_FLOORS 			= 4
+const N_BUTTONS 		= 3
+const MOTOR_SPEED 		= 2800
 
 
 type MotorDir int
@@ -26,14 +40,18 @@ const(
 
 )  
 
+
 func initLampChannelsMap() map[ElevatorStructs.ButtonType]map[int]int{
 	lamp_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
-		ElevatorStructs.Up:map[int]int{1:channels.LIGHT_UP1,2:channels.LIGHT_UP2,3:channels.LIGHT_UP3,4:channels.LIGHT_UP4},
-		ElevatorStructs.Down:map[int]int{1:channels.LIGHT_DOWN1,2:channels.LIGHT_DOWN2,3:channels.LIGHT_DOWN3,4:channels.LIGHT_DOWN4},
-		ElevatorStructs.Comand:map[int]int{1:channels.LIGHT_COMMAND1,2:channels.LIGHT_COMMAND2,3:channels.LIGHT_COMMAND3,4:channels.LIGHT_COMMAND4}}
+		ElevatorStructs.Up:		map[int]int{1: channels.LIGHT_UP1,		2: channels.LIGHT_UP2,		3: channels.LIGHT_UP3,		4: channels.LIGHT_UP4		},
+		ElevatorStructs.Down:	map[int]int{1: channels.LIGHT_DOWN1,	2: channels.LIGHT_DOWN2,	3: channels.LIGHT_DOWN3,	4: channels.LIGHT_DOWN4		},
+		ElevatorStructs.Comand:	map[int]int{1: channels.LIGHT_COMMAND1,	2: channels.LIGHT_COMMAND2,	3: channels.LIGHT_COMMAND3,	4: channels.LIGHT_COMMAND4	}}
 	return lamp_channel_map
 	
 }
+
+
+
 
 func getLampChannel(floor int, lamp ButtonType) (int, error) {
 	if lamp_channel_map[lamp][floor] == 0{
@@ -43,14 +61,19 @@ func getLampChannel(floor int, lamp ButtonType) (int, error) {
 }
 
 
+
+
 func initButtonChannelsMap() map[ElevatorStructs.ButtonType]map[int]int{
 	button_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
-		ElevatorStructs.Up:map[int]int{1:channels.BUTTON_UP1,2:channels.BUTTON_UP2,3:channels.BUTTON_UP3,4:channels.BUTTON_UP4},
-		ElevatorStructs.Down:map[int]int{1:channels.BUTTON_DOWN1,2:channels.BUTTON_DOWN2,3:channels.BUTTON_DOWN3,4:channels.BUTTON_DOWN4},
-		ElevatorStructs.Comand:map[int]int{1:channels.BUTTON_COMMAND1,2:channels.BUTTON_COMMAND2,3:channels.BUTTON_COMMAND3,4:channels.BUTTON_COMMAND4}}
+		ElevatorStructs.Up:		map[int]int{1: channels.BUTTON_UP1, 		2: channels.BUTTON_UP2,			3: channels.BUTTON_UP3,			4: channels.BUTTON_UP4		},
+		ElevatorStructs.Down:	map[int]int{1: channels.BUTTON_DOWN1,		2: channels.BUTTON_DOWN2,		3: channels.BUTTON_DOWN3,		4: channels.BUTTON_DOWN4	},
+		ElevatorStructs.Comand:	map[int]int{1: channels.BUTTON_COMMAND1, 	2: channels.BUTTON_COMMAND2,	3: channels.BUTTON_COMMAND3,	4: channels.BUTTON_COMMAND4	}}
 	return button_channel_map
 	
 }
+
+
+
 
 func getButtonChannel(floor int, lamp ElevatorStructs.ButtonType) (int, error) {
 	if button_channel_map[lamp][floor] == 0{
@@ -58,6 +81,9 @@ func getButtonChannel(floor int, lamp ElevatorStructs.ButtonType) (int, error) {
 	}
 	return button_channel_map[lamp][floor], nil
 }
+
+
+
 
 func ElevInit() error{
 	initSuccess := io.Io_init()
@@ -80,6 +106,9 @@ func ElevInit() error{
 	return nil
 }
 
+
+
+
 func ElevSetMotorDirection(dir MotorDir){
 	if (dir == DirStop){
 		io.Io_write_analog(channels.MOTOR, 0)
@@ -91,6 +120,9 @@ func ElevSetMotorDirection(dir MotorDir){
 		io.Io_write_analog(channels.MOTOR, MOTOR_SPEED)
 	}
 }
+
+
+
 
 func ElevSetButtonLamp(button ElevatorStructs.ButtonType, floor int, value int) error{
 	channel, err := getLampChannel(floor, button)
@@ -104,6 +136,9 @@ func ElevSetButtonLamp(button ElevatorStructs.ButtonType, floor int, value int) 
 	}
 	return nil
 }
+
+
+
 
 func ElevSetFloorIndicator(floor int) error{
 	if floor < 1 || floor > N_FLOORS {
@@ -124,6 +159,9 @@ func ElevSetFloorIndicator(floor int) error{
     return nil
 }
 
+
+
+
 func ElevSetDoorOpenLamp( value int) {
 	if value >= 1{
 		io.Io_set_bit(channels.LIGHT_DOOR_OPEN)
@@ -132,6 +170,9 @@ func ElevSetDoorOpenLamp( value int) {
 	}
 }
 
+
+
+
 func ElevGetButtonSignal(button ButtonType, floor int) (int, error){
 	channel, err := getButtonChannel(floor,button)
 	if err != nil{
@@ -139,6 +180,9 @@ func ElevGetButtonSignal(button ButtonType, floor int) (int, error){
 	}
 	return io.Io_read_bit(channel), nil
 }
+
+
+
 
 func ElevGetFloorSensorSignal() int{
 	if(io.Io_read_bit(channels.SENSOR_FLOOR1) >= 1){
@@ -153,8 +197,3 @@ func ElevGetFloorSensorSignal() int{
 		return 0
 	}
 }
-
-
-
-
-

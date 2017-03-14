@@ -5,6 +5,18 @@ package io
 #include "io.h"
 */
 import "C"
+/*
+||	File: io/io.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		Golang wrapper for io.h. Define basic I/O elevator functions
+||
+*/
 
 func Io_set_bit(channel int){
 	C.io_set_bit(C.int(channel))

@@ -29,7 +29,7 @@ var lastMeasuredFloor int
 func initButtonStatusMap() map[ElevatorStructs.ButtonType]map[int]int {
 	button_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
 		ElevatorStructs.Up:		map[int]int{1:0, 2:0, 3:0, 4:0},
-		ElevatorStructs.Down:		map[int]int{1:0, 2:0, 3:0, 4:0},
+		ElevatorStructs.Down:	map[int]int{1:0, 2:0, 3:0, 4:0},
 		ElevatorStructs.Comand:	map[int]int{1:0, 2:0, 3:0, 4:0}}
 	return button_channel_map
 }
@@ -38,7 +38,7 @@ func initButtonStatusMap() map[ElevatorStructs.ButtonType]map[int]int {
 func pullButtons() ElevatorStructs.ButtonPlacement{
 	for f := 1; f <= Elev.N_FLOORS; f ++{
 		var b ElevatorStructs.ButtonType
-		for b =  0; b < Elev.N_BUTTONS; b ++{
+		for b =  -1; b < Elev.N_BUTTONS	-1; b ++{
 			value,_ := Elev.ElevGetButtonSignal(ElevatorStructs.ButtonType(b),f)
 			if value == 1 && buttonStatusMap[b][f] != value{
 				buttonPressed := ElevatorStructs.ButtonPlacement{Floor: f, ButtonType: b,Value: 1}
@@ -73,7 +73,7 @@ func ElevatorPullingThread(getButton_Ch chan<- ElevatorStructs.ButtonPlacement, 
 }
 
 func SetLight(button ElevatorStructs.ButtonPlacement){
-	if button.ButtonType < 3{
+	if button.ButtonType < 2{
 		if err := Elev.ElevSetButtonLamp(button.ButtonType, button.Floor, button.Value); err != nil{
 			fmt.Println(err)
 		} 

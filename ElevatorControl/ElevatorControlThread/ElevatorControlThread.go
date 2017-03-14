@@ -19,20 +19,20 @@ var reSendOrderTimer_Ch (chan bool)
 var orderComplete_Ch 	(chan bool)
 var from_MsgRelay_Ch 	(<-chan []byte)
 var to_MsgRelay_Ch 		(chan<- []byte)
-var masterOnNet bool
-
+var masterOnNet_Ch      (chan bool)
+var masterOnNet         bool
 
 func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mutex_Ec_Ch chan bool, ElevCtrl_exit_Ch chan bool) {
 	getButton_Ch			:= make(chan ElevatorStructs.ButtonPlacement)
 	getFloor_Ch 			:= make(chan int)
 	timerFinishedDoor_Ch 	:= make(chan bool)
 	reSendOrderTimer_Ch 	:= make(chan bool)
-	orderComplete_Ch 		:= make(chan bool, 1)
-
+	orderComplete_Ch 		= make(chan bool, 1)
+	masterOnNet_Ch          = make(chan bool, 1)
 	from_MsgRelay_Ch 	= from_MsgRelay_Ch_
 	to_MsgRelay_Ch 		= to_MsgRelay_Ch_
 
-	masterOnNet = false
+	masterOnNet = false 
 
 	Elev.ElevInit()
 	go ElevatorDriver.ElevatorPullingThread(getButton_Ch,getFloor_Ch)
@@ -52,6 +52,8 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 			select{	
 			case <- orderComplete_Ch:
 				to_MsgRelay_Ch <- generateMsg(MessageFormat.ORDER_FINISHED_BY_ELEVATOR,ElevatorStructs.OrderCompletStruck{OrderComplet: true})
+			case masterOnNet = <- masterOnNet_Ch:
+				to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
 			case getButton 	:= <- getButton_Ch:
 				newButtonPressed(getButton)
 			case getFloor 	:= <- getFloor_Ch:
@@ -79,8 +81,7 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 				} else if msgHead.MsgType == MessageFormat.SET_LIGHT {
 					setLightHandler(data)
 				} else if msgHead.MsgType == MessageFormat.MASTER_ON_NET{
-					masterOnNet = true
-					to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
+					masterOnNet_Ch <- true
 				} else if msgHead.MsgType == MessageFormat.MASTER_NOT_ON_NET{
 					masterOnNet = false
 				} else if msgHead.MsgType == MessageFormat.NEW_ELEVATOR_REQUEST_ACCEPTED{
@@ -166,9 +167,12 @@ func newFloorReached(floor int){
 	if orderComplete == true{
 		// Do stuff related to order complete
 		//Må legg til tilstandsendring, og starting av lys.
-		orderComplete_Ch <- true 
+		fmt.Println("Length chanel :", len(orderComplete_Ch))
+		orderComplete_Ch <- true
+		fmt.Println("Length chanel :", len(orderComplete_Ch))
 		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:ElevatorStructs.Door,Value:1})
 	}
+	fmt.Println("Motor dir is: ", motorDir)
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	//Send melding om ny etasje, og retning.
 	if masterOnNet{

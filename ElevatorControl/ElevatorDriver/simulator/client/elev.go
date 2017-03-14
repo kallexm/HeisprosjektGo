@@ -14,7 +14,7 @@ package Elev
 import "C"
 import "../../../ElevatorStructs"
 //import "errors"
-//import "fmt"
+import "fmt"
 
 
 
@@ -44,7 +44,16 @@ func ElevSetMotorDirection(dir MotorDir){
 }
 
 func ElevSetButtonLamp(button ElevatorStructs.ButtonType, floor int, value int) error{
-	C.elev_set_button_lamp(C.elev_button_type_t(button),C.int(floor-1),C.int(value))
+	var cButton int
+	if (button == ElevatorStructs.Up){
+		cButton = 0
+	} else if button == ElevatorStructs.Down{
+		cButton = 1 
+	} else{
+		cButton = 2
+	}
+	fmt.Println("cButton in set: ", cButton)
+	C.elev_set_button_lamp(C.elev_button_type_t(cButton),C.int(floor-1),C.int(value))
 	return nil
 }
 
@@ -54,7 +63,16 @@ func ElevSetDoorOpenLamp(value int){
 }
 
 func ElevGetButtonSignal(button ElevatorStructs.ButtonType, floor int)(int, error){
-	value := int(C.elev_get_button_signal(C.elev_button_type_t(button),C.int(floor-1)))
+	var cButton int
+	if (button == ElevatorStructs.Up){
+		cButton = 0
+	} else if button == ElevatorStructs.Down{
+		cButton = 1 
+	} else{
+		cButton = 2
+	}
+	//fmt.Println("cButton in get: ", cButton)
+	value := int(C.elev_get_button_signal(C.elev_button_type_t(cButton),C.int(floor-1)))
 	return value, nil
 }
  

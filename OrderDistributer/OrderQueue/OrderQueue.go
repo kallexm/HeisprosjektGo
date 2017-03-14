@@ -2,7 +2,7 @@ package OrderQueue
 
 import
 (
-	//"fmt"
+	"fmt"
 )
 
 type Dir_t int
@@ -89,6 +89,7 @@ func init(){
 }
 
 func AddElevator(id int){
+	fmt.Println("New helevator id: ", id)
 	if _, ok := disabeledElevators[Id_t(id)]; ok{
 		elevators[Id_t(id)] = disabeledElevators[Id_t(id)]
 		delete(disabeledElevators,Id_t(id))
@@ -108,11 +109,13 @@ func AddOrder(newOrder Order) bool{
 	orders = append(orders,newOrder)
 	if newOrder.OrderType == Comand{
 		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(&orders[len(orders)-1])
-	} 
+	} else{
+		orders[len(orders)-1] = orders[len(orders)-1].ChangeDesignatedElevator(Id_t(0)) 
+	}
 	orderIdNr += 1
 	return true
 }
-
+// Må legge til funksjonalitet for at interne ordere til heisen skall tass ut av listen over ordere. 
 func RemoveElevator(id int){
 	newDisabelElev := elevators[Id_t(id)]
 	disabeledElevators[Id_t(id)] = newDisabelElev

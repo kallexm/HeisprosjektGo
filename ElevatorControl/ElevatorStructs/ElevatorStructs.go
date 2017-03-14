@@ -22,7 +22,7 @@ import(
 //Data types from Elev
 type ButtonType int
 const(
-	Down ButtonType = iota -1
+	Down ButtonType = iota - 1
 	Comand
 	Up
 	Door
@@ -51,6 +51,7 @@ const(
 	DirNon
 	DirUp
 )
+
 
 
 //Struct from Status

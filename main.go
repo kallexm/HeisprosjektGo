@@ -2,8 +2,8 @@ package main
 /*
 ||	File: main
 ||
-||	Author:  Andreas Hanssen Moltumyr	
-||			 Martin Mostad
+||	Authors:  
+||
 ||	Date: 	 Spring 2017
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
@@ -11,7 +11,7 @@ package main
 ||		Starting point of program.
 ||		It creates the nessesary channels for communication between the different parts of the program.
 ||		Gets the nodeID of this node from the standard I/O.
-||		It spawns the three goroutines (NodeConnectionManager_thread, OrderDist_thr and ElevatorControl_thread)
+||		It spawns three goroutines (NodeConnectionManager.Thread, OrderDistributerThread.Thread and ElevatorControlThread.Thread)
 ||		and gives them the appropriate channels so the goroutines can communicate.
 ||		Then it waits for the goroutines to finish.
 ||

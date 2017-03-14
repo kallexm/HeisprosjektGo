@@ -2,23 +2,16 @@ package NodeMessageRelay
 /*
 ||	File: NodeMessageRelay
 ||
-||	Author:  Andreas Hanssen Moltumyr	
-||	Partner: Martin Mostad
+||	Authors:  
+||
 ||	Date: 	 Spring 2017
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
 ||	Summary of File:
 ||		Contains a goroutine function which gets messages from channels and
 ||		forwards them based on lookup in the routing table in NodeRoutingTable
-||		which is maintained by NodeConnectionManager.
+||		which is updated by NodeConnectionManager when necessary.
 ||
-*/
-
-/*[FFF]
-1. Motta meldinger fra heis, orderDistributer og meldinger fra andre noder.
-2. Sjekk De riktige feltene i meldingen.
-3. Sjekk om meldingen skal lokalt, I såfall send gjennom passende channel
-4. Hent connections list pekeren fra en delt kanal mellom NodeMessageRelay og og sjekk om den stemmer med noen av nodene som er koblet til gjennom TCP. Hvis den stemmer, send gjennom denne forbindelsen.
 */
 
 import
@@ -27,8 +20,6 @@ import
 	"../../MessageFormat"
 	
 	"fmt"
-	//"os"
-	//"time"
 )
 
 
@@ -38,7 +29,6 @@ var routingTable_ptr *NodeRoutingTable.RoutingTable_t
 var masterShouldTakeMutexNext = false
 
 func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
-	fmt.Println("Starting messageRelay")
 	for {
 		if masterShouldTakeMutexNext == false { // remove for if no work
 			routingTable_ptr = <- routingTable_Ch
@@ -106,17 +96,14 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 						}
 						
 					default:
-						// Do nothing
 					}
 					select {
 					case <- tableEntry.Mutex_Ch:
 						continueFor = false
 					default:
-						// Do nothing
 					}
 				}
 			default:
-				// Do nothing
 			}
 			
 		}
@@ -129,10 +116,10 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 }
 
 
+
 func eval_error(err error) {
 	if err != nil {
 		fmt.Println(err)
-		//os.Exit(0)
 	}
 }
 

@@ -2,8 +2,8 @@ package NodeSingleConnection
 /*
 ||	File: NodeSingleConnection
 ||
-||	Author:  Andreas Hanssen Moltumyr	
-||	Partner: Martin Mostad
+||	Authors: 
+||			 
 ||	Date: 	 Spring 2017
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
@@ -14,16 +14,6 @@ package NodeSingleConnection
 ||
 */
 
-/*[FFF]
-1. Inneholder en tråd som skal bli kalt hver gang en ny Node vil koble seg på.
-2. Denne vil motta data den skal sende over en channel hvor den andre enden ligger lagret i NodeRoutingTable listen sammen med all den andre data om hvilken node som denne tråden kobler til.
-3. Har i oppdrag å pinge og sørge for at forbindelsen opprettholdes.
-4. Har i oppdrag å motta meldinger fra annen node og sende til NodeMessageRelay
-5. Har i oppdrag å sende meldinger til annen node som er mottatt fra NodeMessageRelay 
-6. Må varsle NodeConnectionManager hvis den mister forbindelsen/timer ut.
-(7.) Føre statestikk over hvor mye som sendes.
-*/
-
 import
 (
 	"../../MessageFormat"
@@ -32,8 +22,6 @@ import
 	"net"
 	"time"
 	"bytes"
-	//"errors"
-	
 )
 
 const readDeadlineTime 			= 50*time.Millisecond
@@ -45,22 +33,24 @@ const numberOfAllowedTimeouts 	= 3
 
 const readBufferSize 			= 1024
 
+
+
 func HandleConnection(	conn 							net.Conn,
 						thisConnectsToNodeID 			uint8	,
 						from_node_Ch 			<-chan 	[]byte	,
 						to_node_Ch 				chan<- 	[]byte	,
 						connection_Mutex_Ch		chan 	bool	) {
 
-	var sendMsg		[]byte
-	var sendErr		error
 
-	var connBroke 			= false
-	var connBrokeMsgSent 	= false
+	var sendErr						error
+	var numberOfTimeouts 			uint8
+	var keepAliveTicker 			*time.Ticker
 
-	var numberOfTimeouts uint8
-	var keepAliveTicker *time.Ticker
-	var keepAliveMessage = []byte{255,255,255,255,255}
-	var lengthOfKeepAliveMessage = len(keepAliveMessage)
+	var connBroke 					= false
+	var connBrokeMsgSent 			= false
+
+	var keepAliveMessage 			= []byte{255,255,255,255,255}
+	var lengthOfKeepAliveMessage 	= len(keepAliveMessage)
 
 	if keepAlive == true {
 			keepAliveTicker = time.NewTicker(keepAliveTime)
@@ -70,11 +60,10 @@ func HandleConnection(	conn 							net.Conn,
 	forLoop:
 	for {
 		select {
-		case sendMsg = <- from_node_Ch:
-			_ 		= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
+		case sendMsg := <- from_node_Ch:
+			_ 			= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
 			_, sendErr	= conn.Write(sendMsg)
 			if sendErr != nil {
-				//fmt.Println(sendErr)
 				connBroke = true
 			}
 
@@ -127,7 +116,6 @@ func HandleConnection(	conn 							net.Conn,
 			connection_Mutex_Ch <- true
 
 		case <- keepAliveTicker.C:
-			//fmt.Println("Ticker ticked with numberOfTimeouts: ", numberOfTimeouts)
 			if numberOfTimeouts >= numberOfAllowedTimeouts {
 				connBroke = true
 				keepAliveTicker.Stop()
@@ -135,12 +123,10 @@ func HandleConnection(	conn 							net.Conn,
 				_ 		= conn.SetWriteDeadline(time.Now().Add(writeDeadlineTime))
 				_, sendErr	= conn.Write(keepAliveMessage)
 				if sendErr != nil {
-					//fmt.Println(sendErr)
 					connBroke = true
 				}
 				numberOfTimeouts++
 			}
-			
 		}
 	}
 }

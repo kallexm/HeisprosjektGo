@@ -2,8 +2,8 @@ package NodeRoutingTable
 /*
 ||	File: NodeRoutingTable
 ||
-||	Author:  Andreas Hanssen Moltumyr	
-||	Partner: Martin Mostad
+||	Authors: 
+||
 ||	Date: 	 Spring 2017
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
@@ -13,15 +13,8 @@ package NodeRoutingTable
 ||
 */
 
-/*[KKK]
-1. Holde en connectionlist som benyttes av NodeMessageRelay og oppdateres av NodeConnectionManager
-2. connectionlisten bør være redundant lagret.
-3. En peker til dette connectionlisten ligger i en channel som er delt mellom NodeMessageRelay og NodeConnectionManager. Bare en av disse kan holde pekeren om gangen. Når en av nodene er ferding med å bruke den skal den sendes tilbake til channelen.
-*/
-
 import
 (
-	//"fmt"
 	"errors"
 )
 
@@ -46,13 +39,21 @@ type RoutingTable_t []RoutingEntry_t
 var routingTable RoutingTable_t
 
 
+
+
 func Get_reference_to_routing_table() (*RoutingTable_t) {
 	return &routingTable
 }
 
+
+
+
 func (rt *RoutingTable_t) Add_new_routing_entries(newRoutingEntries ...RoutingEntry_t) {
 	*rt = append(*rt, newRoutingEntries...)
 }
+
+
+
 
 func (rt *RoutingTable_t) Remove_routing_entry(nodeID uint8) (RoutingEntry_t, error){
 	var removedRoutingTable RoutingEntry_t
@@ -71,16 +72,12 @@ func (rt *RoutingTable_t) Remove_routing_entry(nodeID uint8) (RoutingEntry_t, er
 	return removedRoutingTable, err
 }
 
+
+
+
 func (rt *RoutingEntry_t) Get_receive_Ch() <-chan []byte {
 	return rt.Receive_Ch
 }
-
-
-
-/*func (rt *RoutingTable_t) Contains_entry_with(nodeID uint8) {
-//connectionTable = make([]singleConnection, 0)
-}*/
-
 
 
 

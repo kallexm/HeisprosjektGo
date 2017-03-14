@@ -57,9 +57,9 @@ func (order Order) ChangeDesignatedElevator(id Id_t) Order{
 
 type Elev struct{
 	Id Id_t
-	CurentOrder *Order
+	CurentOrder Id_t
 	CurentPosition Position
-	CurentInternalOrders []*Order
+	CurentInternalOrders []Id_t 
 	ElevatorStatus State_t
 }
 
@@ -69,12 +69,12 @@ func (elev Elev) changePosition(position Position) Elev{
 	
 }
 
-func (elev Elev) AddInternalOrder(order *Order) Elev{
+func (elev Elev) AddInternalOrder(order Id_t) Elev{
 	elev.CurentInternalOrders = append(elev.CurentInternalOrders, order)
 	return elev
 }
 
-func (elev Elev) ChangeCurentOrder(order *Order) Elev{
+func (elev Elev) ChangeCurentOrder(order Id_t) Elev{
 	elev.CurentOrder = order
 	return elev
 }
@@ -112,7 +112,7 @@ func AddElevator(id int){
 	if _, ok := elevators[Id_t(id)]; ok {
 		return
 	} 
-	newElev := Elev{Id:Id_t(id),CurentOrder: &Order{},CurentPosition: Position{}, CurentInternalOrders: make([]*Order,0)}
+	newElev := Elev{Id:Id_t(id),CurentOrder: Id_t(0),CurentPosition: Position{}, CurentInternalOrders: make([]Id_t,0)}
 	elevators[Id_t(id)] = newElev
 }
 
@@ -127,7 +127,7 @@ func AddOrder(newOrder Order) bool{
 	} 
 	orders = append(orders,newOrder)
 	if newOrder.OrderType == Comand{
-		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(&orders[len(orders)-1])
+		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(orders[len(orders)-1].orderId)
 	} else{
 		orders[len(orders)-1] = orders[len(orders)-1].ChangeDesignatedElevator(Id_t(0)) 
 	}
@@ -179,8 +179,12 @@ func ChangeElevatorPosition(id int, position Position){
 
 
 func OrderCompleet( id int) {
-	RemoveOrder(*(elevators[Id_t(id)].CurentOrder))
-	elevators[Id_t(id)] = elevators[Id_t(id)].ChangeCurentOrder(&Order{})
+	for _, order := range orders{
+		if order.OrderId == Id_t(id){
+			RemoveOrder(*(elevators[Id_t(id)].CurentOrder))
+		}
+	}
+	elevators[Id_t(id)] = elevators[Id_t(id)].ChangeCurentOrder(Id_t(0))
 }
 
 

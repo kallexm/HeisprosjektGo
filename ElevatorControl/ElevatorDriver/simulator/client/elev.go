@@ -12,16 +12,11 @@ package Elev
 #include "con_load.h"
 */
 import "C"
+import "../../../ElevatorStructs"
 //import "errors"
 //import "fmt"
 
-type ButtonType int
-const(
-	Up ButtonType = iota
-	Down
-	Comand
-	Door
-)
+
 
 type MotorDir int
 const(
@@ -48,7 +43,7 @@ func ElevSetMotorDirection(dir MotorDir){
 	C.elev_set_motor_direction(C.elev_motor_direction_t(dir))	
 }
 
-func ElevSetButtonLamp(button ButtonType, floor int, value int) error{
+func ElevSetButtonLamp(button ElevatorStructs.ButtonType, floor int, value int) error{
 	C.elev_set_button_lamp(C.elev_button_type_t(button),C.int(floor-1),C.int(value))
 	return nil
 }
@@ -58,7 +53,7 @@ func ElevSetDoorOpenLamp(value int){
 	
 }
 
-func ElevGetButtonSignal(button ButtonType, floor int)(int, error){
+func ElevGetButtonSignal(button ElevatorStructs.ButtonType, floor int)(int, error){
 	value := int(C.elev_get_button_signal(C.elev_button_type_t(button),C.int(floor-1)))
 	return value, nil
 }

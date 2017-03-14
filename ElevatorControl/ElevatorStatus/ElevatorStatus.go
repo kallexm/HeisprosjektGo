@@ -64,7 +64,7 @@ func removeUnconfirmedOrder(){
 
 //kalles om heisen sluter å fungerer
 func SetStateMalfunction(){
-	currentState = ElevatorStructs.Malfunction
+	currentState = ElevatorStructs.StateMalfunction
 }
 
 
@@ -74,23 +74,23 @@ func SetStateMalfunction(){
 //retunerer en boolsk variabel om orderen er øyeblikelig utført. Vi står i riktig etasje
 //vill det reelt kunne skje noen gang? Skall det være tilat?
 func NewCurrentOrder(newCurrentOrder ElevatorStructs.Order) (ElevatorStructs.Dir, error, bool){
-	if currentState == ElevatorStructs.DoorOpen{
+	if currentState == ElevatorStructs.StateDoorOpen{
 		currentOrder = newCurrentOrder
 		return ElevatorStructs.DirNon, nil, false
 	}
 	if (newCurrentOrder.Floor == currentPosition.Floor && currentPosition.Dir == ElevatorStructs.DirNon){
-		currentState = ElevatorStructs.DoorOpen
+		currentState = ElevatorStructs.StateDoorOpen
 		//starter en timer
 		go timer.TimerThread(timerDoorchannel,2)
 		return ElevatorStructs.DirNon, nil, true
 	} else if newCurrentOrder.Floor > currentPosition.Floor{
 		currentOrder 		= newCurrentOrder
-		currentState 		= ElevatorStructs.Up
+		currentState 		= ElevatorStructs.StateUp
 		currentPosition.Dir = ElevatorStructs.DirUp
 		return ElevatorStructs.DirUp, nil, false
 	} else{
 		currentOrder 		= newCurrentOrder
-		currentState 		= ElevatorStructs.Down
+		currentState 		= ElevatorStructs.StateDown
 		currentPosition.Dir = ElevatorStructs.DirDown
 		return ElevatorStructs.DirDown, nil, false
 	}
@@ -105,7 +105,7 @@ func NewFloor(floor int) (ElevatorStructs.Dir, bool){
 	if floor == currentOrder.Floor{
 		currentPosition.Dir = ElevatorStructs.DirNon
 		currentOrder 		= ElevatorStructs.Order{}
-		currentState 		= ElevatorStructs.DoorOpen
+		currentState 		= ElevatorStructs.StateDoorOpen
 		//starter en timer
 		go timer.TimerThread(timerDoorchannel,2)
 		return ElevatorStructs.DirNon, true
@@ -118,15 +118,15 @@ func NewFloor(floor int) (ElevatorStructs.Dir, bool){
 //kalles om timeren til door har timet ut. Returnerer den nye retningen til heisen
 func DoorTimeOut()ElevatorStructs.Dir{
 	if (currentOrder == ElevatorStructs.Order{}){
-		currentState = ElevatorStructs.Idel
+		currentState = ElevatorStructs.StateIdel
 		currentPosition.Dir = ElevatorStructs.DirNon
 		return ElevatorStructs.DirNon
 	} else if currentOrder.Floor > currentPosition.Floor{
-		currentState = ElevatorStructs.Up
+		currentState = ElevatorStructs.StateUp
 		currentPosition.Dir = ElevatorStructs.DirUp
 		return ElevatorStructs.DirUp
 	} else {
-		currentState = ElevatorStructs.Down
+		currentState = ElevatorStructs.StateDown
 		currentPosition.Dir = ElevatorStructs.DirDown
 		return ElevatorStructs.DirDown
 	}
@@ -139,7 +139,7 @@ func InitElevatorStatus(timerDoorch chan bool) {
 	timerDoorchannel = timerDoorch
 	currentPosition = ElevatorStructs.Position{}
 	currentOrder = ElevatorStructs.Order{}
-	currentState = ElevatorStructs.Down
+	currentState = ElevatorStructs.StateDown
 	unconfirmedOrder = []ElevatorStructs.Order{}
 }
 

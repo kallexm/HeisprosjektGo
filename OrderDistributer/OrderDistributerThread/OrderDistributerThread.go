@@ -47,10 +47,10 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 			// ------[ When in state, do ]-------
 			select {
-			case msg := <- from_NodeComm_Ch:
-				msgHeader, data, err := MessageFormat.Decode_msg(msg)
+			case resciveMsg := <- from_NodeComm_Ch:
+				resciveMsgHeader, data, err := MessageFormat.Decode_msg(resciveMsg)
 
-				if msgHeader.From == MessageFormat.ELEVATOR {
+				if resciveMsgHeader.From == MessageFormat.ELEVATOR {
 					<- OrderDist_NodeComm_Mutex_Ch
 				}
 
@@ -58,7 +58,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					fmt.Println(data, err) 	//Dummy print
 				}							//Dummy if
 
-				switch msgHeader.MsgType {
+				switch resciveMsgHeader.MsgType {
 				case MessageFormat.ORDER_FINISHED_BY_ELEVATOR:
 					fmt.Println("ORDER_FINISHED_BY_ELEVATOR:", data)
 					// Implement
@@ -97,7 +97,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					orderDistributerState = STATE_SLAVE
 				}
 
-				if msgHeader.From == MessageFormat.ELEVATOR {
+				if resciveMsgHeader.From == MessageFormat.ELEVATOR {
 					OrderDist_NodeComm_Mutex_Ch <- true
 				}
 
@@ -126,14 +126,14 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 			// ------[ When in state, do ]-------
 			select {
-			case msg := <- from_NodeComm_Ch:
-				msgHeader, data, err := MessageFormat.Decode_msg(msg)
+			case resciveMsg := <- from_NodeComm_Ch:
+				resciveMsgHeader, data, err := MessageFormat.Decode_msg(resciveMsg)
 
 				if false { 					//Dummy if
 					fmt.Println(data, err) 	//Dummy print
 				}							//Dummy if
 
-				switch msgHeader.MsgType {
+				switch  resciveMsgHeader.MsgType {
 				case MessageFormat.BACKUP_DATA_TRANSFER:
 					fmt.Println("BACKUP_DATA_TRANSFER")
 					// Implement

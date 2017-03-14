@@ -7,19 +7,27 @@ import
 	"../ElevatorDriver/simulator/client"
 	"../ElevatorStatus"
 	"../ElevatorStatus/timer"
+	"../ElevatorStructs"
 	"../../MessageFormat"
 	"fmt"
 	"encoding/json"
 )
+
+/*type OrderCompletStruck struct{
+	orderComplet bool
+}*/
+
 var timerFinishedunconfirmedOrderCh (chan bool)
+var orderComplet_Ch (chan bool)
 var main_To_Elev_ch (<-chan []byte)
 var Elev_To_main (chan <-[]byte)
 
 func Thread(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_Ec_Ch chan bool, ElevCtrl_exit_Ch chan bool) {
-	getButtonCh := make(chan ElevatorDriver.ButtonPlacement)
+	getButtonCh := make(chan ElevatorStructs.ButtonPlacement)
 	getFloorCh := make(chan int)
 	timerFinishedDoorCh := make(chan bool)
 	timerFinishedunconfirmedOrderCh := make(chan bool)
+	orderComplet_Ch := make(chan bool,1)
 	//Stykkt finnpå bedre variable navn
 	main_To_Elev_ch = main_To_Elev_ch_
 	Elev_To_main = Elev_To_main_
@@ -37,6 +45,8 @@ func Thread(main_To_Elev_ch_ <-chan []byte, Elev_To_main_ chan<- []byte, mutex_E
 		case <- mutex_Ec_Ch:
 			//fmt.Println("Controll has the Ec mutex")
 			select{	
+			case <- orderComplet_Ch:
+				Elev_To_main <- generateMsg(MessageFormat.ORDER_FINISHED_BY_ELEVATOR,ElevatorStructs.OrderCompletStruck{OrderComplet: true})
 			case getButton := <- getButtonCh:
 				newButtonPresed(getButton)
 			case getFloor := <- getFloorCh:
@@ -85,7 +95,7 @@ func generateMsg(msgType MessageFormat.MsgType_t, inputStruct interface{}) []byt
 }
 
 func newOrderToElevatorHandeler(data []byte){
-	var newOrder ElevatorStatus.Order
+	var newOrder ElevatorStructs.Order
 	if err := json.Unmarshal(data, &newOrder); err != nil{
 		fmt.Println("Error in Unmarshal: ", err)
 	}
@@ -93,14 +103,17 @@ func newOrderToElevatorHandeler(data []byte){
 	if err != nil{
 		fmt.Println("An error hapene i New_ORDER_TO_ELEVATOR")
 	} else if orderComplet == true{
-		ElevatorDriver.SetLight(ElevatorDriver.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
+		// Do stof related to order compleat
+		//Må legg til tilstandsendring, og starting av lys
+		orderComplet_Ch <- true
+		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	fmt.Println("Ec recived new order: ", newOrder)
 }
 
 func setLightHandeler(data []byte){
-	var button ElevatorDriver.ButtonPlacement
+	var button ElevatorStructs.ButtonPlacement
 	if err := json.Unmarshal(data, &button); err != nil{
 		fmt.Println("Error in MsgType SET_LITGHT", err)
 	}
@@ -108,11 +121,11 @@ func setLightHandeler(data []byte){
 	fmt.Println("Ec handelde new set ligt request ", button)
 }
 
-func newButtonPresed(button ElevatorDriver.ButtonPlacement){
+func newButtonPresed(button ElevatorStructs.ButtonPlacement){
 	fmt.Println("Buttons presed, floor: ", button.Floor, "button type: ", button.ButtonType)
 	ElevatorStatus.NewUnconfirmedOrder(button)
 	go timer.TimerThredTwo(timerFinishedunconfirmedOrderCh,3)
-	Elev_To_main <- generateMsg(MessageFormat.NEW_ELEVATOR_REQUEST,ElevatorStatus.Order{Floor: button.Floor, OrderDir: ElevatorStatus.Dir(button.ButtonType)})
+	Elev_To_main <- generateMsg(MessageFormat.NEW_ELEVATOR_REQUEST,ElevatorStructs.Order{Floor: button.Floor, OrderDir: ElevatorStructs.Dir(button.ButtonType)})
 }
 
 func newFloorReached(floor int){
@@ -120,7 +133,9 @@ func newFloorReached(floor int){
 	motorDir, orderComplet := ElevatorStatus.NewFloor(floor)
 	if orderComplet == true{
 		// Do stof related to order compleat
-		ElevatorDriver.SetLight(ElevatorDriver.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
+		//Må legg til tilstandsendring, og starting av lys.
+		orderComplet_Ch <- true 
+		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:1})
 	}
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	//Send melding om ny etasje, og retning. 
@@ -130,7 +145,7 @@ func newFloorReached(floor int){
 
 
 func cloaseDoor(){
-	ElevatorDriver.SetLight(ElevatorDriver.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:0})
+	ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:Elev.Door,Value:0})
 	motorDir := ElevatorStatus.DoorTimeOut()
 	ElevatorDriver.SetMotor(Elev.MotorDir(motorDir))
 	Elev_To_main <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())

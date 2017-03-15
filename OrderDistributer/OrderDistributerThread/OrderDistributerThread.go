@@ -1,5 +1,16 @@
 package OrderDistributerThread
-
+/*
+||	File: OrderDistributerThread.go
+||
+||	Authors: 
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File:
+||		OrderDistributerThread.Thread(...) receives requests from all elevators 
+||
+*/
 
 
 import
@@ -8,6 +19,7 @@ import
 	"../OrderQueue"
 	"../OrderEvaluator"
 	"../../ElevatorControl/ElevatorStructs"
+	
 	"encoding/json"
 	"fmt"
 	//"time"
@@ -21,14 +33,16 @@ const(
 )
 
 type backUpStruct struct{
-	elevators map[OrderQueue.Id_t]OrderQueue.Elev
-	disabeledElevators map[OrderQueue.Id_t]OrderQueue.Elev
-	orders []OrderQueue.Order
-	orderIdNr int
+	elevators 			map[OrderQueue.Id_t]OrderQueue.Elev
+	disabeledElevators 	map[OrderQueue.Id_t]OrderQueue.Elev
+	orders 				[]OrderQueue.Order
+	orderIdNr 			int
 }
 
 var orderDistributerState 		orderDistributerState_t
 var prev_orderDistributerState 	orderDistributerState_t
+
+
 
 func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 			to_NodeComm_Ch 				chan<- 	[]byte	,
@@ -61,13 +75,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 			case resciveMsg := <- from_NodeComm_Ch:
 				resciveMsgHeader, data, err := MessageFormat.Decode_msg(resciveMsg)
 
-				if resciveMsgHeader.From == MessageFormat.ELEVATOR {
-					<- OrderDist_NodeComm_Mutex_Ch
-				}
-
-				if false { 					//Dummy if
-					fmt.Println(data, err) 	//Dummy print
-				}							//Dummy if
+				<- OrderDist_NodeComm_Mutex_Ch
 
 				switch resciveMsgHeader.MsgType {
 				case MessageFormat.ORDER_FINISHED_BY_ELEVATOR:
@@ -98,7 +106,6 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					elevators := OrderQueue.GetElevators()
 					fmt.Println("Elevators :", elevators)
 					to_NodeComm_Ch <- newMsg
-					// Implement
 
 				case MessageFormat.ELEVATOR_STATUS_DATA:
 					fmt.Println("ELEVATOR_STATUS_DATA:", data)
@@ -106,31 +113,17 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					OrderQueue.ChangeElevatorPosition(int(resciveMsgHeader.FromNodeID),newStatus)
 					elevators :=  OrderQueue.GetElevators()
 					fmt.Println("Elevators: ", elevators)
-					// Implement
 
 				case MessageFormat.NODE_CONNECTED:
 					fmt.Println("NODE_CONNECTED:", uint8(data[0]))
-					OrderQueue.AddElevator(int(data[0]))	
-					// Implement			
-					// See if one has got an deactivated elevator struct that matches
-					// the id in data (uint8/byte):
-					// If yes: activate struct
-					// If no:  generate a new elevator struct for that id, if struct not in
-					// 		   activated elevator structs. Ignore if in activated elevator structs.
-
-					// Add ability to merge
+					OrderQueue.AddElevator(int(data[0]))
+					iterateOrderListAndSetLights(to_NodeComm_Ch)
 
 				case MessageFormat.NODE_DISCONNECTED:
 					fmt.Println("NODE_DISCONNECTED:", uint8(data[0]))
 					OrderQueue.RemoveElevator(int(data[0]))
-					// Implement
-					// See if one has got an activated elevator struct that matches
-					// the id in data (unit8/byte):
-					// If yes: deactivate struct
-					// If no:  ignore
 
 				case MessageFormat.CHANGE_TO_MASTER:
-					//fmt.Println("CHANGE_TO_MASTER")
 					// Do nothing
 
 				case MessageFormat.CHANGE_TO_SLAVE:
@@ -141,11 +134,11 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					fmt.Println("MERGE_ORDERS_REQUEST")
 					slaveOrders := decodeMergeOrdersRequest(resciveMsgHeader, data)
 					OrderQueue.MergeOrderFromSlave(slaveOrders.elevators, slaveOrders.disabeledElevators, slaveOrders.orders)
+					redistributeOrders(to_NodeComm_Ch)
+					iterateOrderListAndSetLights(to_NodeComm_Ch)
 				}
 
-				if resciveMsgHeader.From == MessageFormat.ELEVATOR {
-					OrderDist_NodeComm_Mutex_Ch <- true
-				}
+				OrderDist_NodeComm_Mutex_Ch <- true
 
 			}
 
@@ -166,6 +159,9 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 			// ------[ Entry Action ]-------
 			if prev_orderDistributerState != orderDistributerState {
 				fmt.Println("OD: [STATE_SLAVE]")
+				<- OrderDist_NodeComm_Mutex_Ch
+				sendMergeOrdersRequest(to_NodeComm_Ch, nodeID)
+				OrderDist_NodeComm_Mutex_Ch <- true 
 
 				prev_orderDistributerState = orderDistributerState
 			}
@@ -174,10 +170,6 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 			select {
 			case resciveMsg := <- from_NodeComm_Ch:
 				resciveMsgHeader, data, err := MessageFormat.Decode_msg(resciveMsg)
-
-				if false { 					//Dummy if
-					fmt.Println(data, err) 	//Dummy print
-				}							//Dummy if
 
 				switch  resciveMsgHeader.MsgType {
 				case MessageFormat.BACKUP_DATA_TRANSFER:
@@ -190,7 +182,6 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 					orderDistributerState = STATE_MASTER
 
 				case MessageFormat.CHANGE_TO_SLAVE:
-					//fmt.Println("CHANGE_TO_SLAVE")
 					// Do nothing
 				}
 
@@ -219,7 +210,9 @@ func generateMsg(msgType MessageFormat.MsgType_t, toNodeId int, to MessageFormat
 	
 }
 
+
 func redistributeOrders(to_NodeComm_Ch chan<-[]byte){
+<<<<<<< HEAD
 	elevators := OrderQueue.GetElevators()
 	ordersToBeAsigned := OrderEvaluator.CalculateOrderAsignment(OrderQueue.GetOrders(), OrderQueue.GetElevators())
 	fmt.Println("Orders to be asigned : ", ordersToBeAsigned)
@@ -231,15 +224,42 @@ func redistributeOrders(to_NodeComm_Ch chan<-[]byte){
 	}
 }
 
+
 func sendBackupToSlave(to_NodeComm_Ch chan<- 	[]byte){
 	backUp := backUpStruct{}
-	backUp.orders = OrderQueue.GetOrders()
-	backUp.elevators = OrderQueue.GetElevators()
-	backUp.disabeledElevators = OrderQueue.GetDisabeledElevators()
-	backUp.orderIdNr = OrderQueue.GetOrderIdNr()
+	backUp.orders 				= OrderQueue.GetOrders()
+	backUp.elevators 			= OrderQueue.GetElevators()
+	backUp.disabeledElevators 	= OrderQueue.GetDisabeledElevators()
+	backUp.orderIdNr 			= OrderQueue.GetOrderIdNr()
 	fmt.Println("Backup to slave send")
 	to_NodeComm_Ch <- generateMsg(MessageFormat.BACKUP_DATA_TRANSFER,0,MessageFormat.BACKUP, backUp)
 }
+
+
+func sendMergeOrdersRequest(to_NodeComm_Ch chan<- []byte, nodeID uint8) {
+	dataToMerge := backUpStruct
+	dataToMerge.orders 				= OrderQueue.GetOrders()
+	dataToMerge.elevators 			= OrderQueue.GetElevators()
+	dataToMerge.disabeledElevators 	= OrderQueue.GetDisabeledElevators()
+	dataToMerge.orderIdNr 			= 0
+	data, err := json.Marshal(dataToMerge)
+	if err != nil{
+		fmt.Println("Error in sendMergeOrdersRequest")
+	}
+
+	msgHeader := MessageFormat.MessageHeader_t{	
+		To: 			MessageFormat.MASTER 				,
+		ToNodeID: 		uint8(0) 							,
+		From: 			MessageFormat.BACKUP 				,
+		FromNodeID: 	nodeID 								,
+		MsgType: 		MessageFormat.MERGE_ORDERS_REQUEST	}
+	mergeMsg, err := MessageFormat.Encode_msg(msgHeader, data)
+	if err != nil{
+		fmt.Println("Error in sendMergeOrdersRequest Msg Encoding")
+	}
+	to_NodeComm_Ch <- mergeMsg
+}
+	
 
 func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data []byte) ElevatorStructs.Order{
 	var newOrder ElevatorStructs.Order
@@ -248,6 +268,7 @@ func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data []by
 	}
 	return newOrder
 }
+
 
 func decodeBackupDataTransfer(msgHeader MessageFormat.MessageHeader_t, data []byte) backUpStruct {
 	var backupData backUpStruct
@@ -279,6 +300,16 @@ func setLights(floor int, value int, orderType OrderQueue.OrderType_t, id OrderQ
 	
 }
 
+
+func iterateOrderListAndSetLights(to_NodeComm_Ch chan<- []byte) {
+	orders := OrderQueue.GetOrders()
+	for _, singleOrder := range orders {
+		setLights(singleOrder.Floor, 1, singleOrder.OrderType, singleOrder.DesignatedElevator, to_NodeComm_Ch)
+	}
+}
+
+
+
 func decodeNewElevatorStatusData(msgHeader MessageFormat.MessageHeader_t, data []byte) OrderQueue.Position{
 	var newPosition ElevatorStructs.Position
 	if err := json.Unmarshal(data, &newPosition); err != nil{
@@ -288,30 +319,4 @@ func decodeNewElevatorStatusData(msgHeader MessageFormat.MessageHeader_t, data [
 }
 
 
-/*
-func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
-			to_NodeComm_Ch 				chan<- 	[]byte	,
-			OrderDist_NodeComm_Mutex_Ch chan 	bool	,
-			OrderDist_exit_Ch 			chan<- 	bool	) {
-	
-	for {
-		select {
-		case msg := <- from_NodeComm_Ch:
-			receivedMsgHeader, data, err := MessageFormat.Decode_msg(msg)
-			CheckError(err)
-			fmt.Println("Message received:", string(data), receivedMsgHeader)
-			
-		default:
-			time.Sleep(100*time.Millisecond)
-		}
-	}
-	
-	OrderDist_exit_Ch <- true
-}
 
-
-func CheckError(err error) {
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-}*/

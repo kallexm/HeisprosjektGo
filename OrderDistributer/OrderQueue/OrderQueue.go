@@ -207,11 +207,28 @@ func MergeOrderFromSlave(elevatorsFromSlave map[Id_t]Elev, disabeledElevatorsFro
 	for _, newOrder := range ordersFromSlave {
 		_ = AddOrder(newOrder)
 	}
-
 	for _, elevFromSlave := range elevatorsFromSlave {
 		for _, elevInMaster := range elevators {
 			if elevFromSlave.Id != elevInMaster.Id {
-
+				elevFromSlave.CurentInternalOrders = []Id_t{}
+				elevators[elevFromSlave.Id] = elevFromSlave
+			}
+		}
+	}
+	for _, disabledElevFromSlave := range disabeledElevatorsFromSlave {
+		for _, disabledElevInMaster := range disabeledElevators {
+			if disabledElevFromSlave.Id != disabledElevInMaster.Id {
+				disabledElevFromSlave.CurentInternalOrders = []Id_t{}
+				disabeledElevators[disabledElevFromSlave.Id] = disabledElevFromSlave
+			}
+		}
+	}
+	for _, singleOrder := range orders {
+		if singleOrder.OrderType == Comand {
+			for _, elev := range elevators {
+				if singleOrder.DesignatedElevator == elev.Id {
+					elevators[singleOrder.OrderId].AddInternalOrder(singleOrder.OrderId)
+				}
 			}
 		}
 	}

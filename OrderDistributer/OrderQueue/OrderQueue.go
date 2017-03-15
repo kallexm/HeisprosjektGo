@@ -1,4 +1,16 @@
 package OrderQueue
+/*
+||	File: OrderQueue.go
+||
+||	Authors:  
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		
+||
+*/
 
 import
 (
@@ -8,27 +20,19 @@ import
 type Dir_t int
 const(
 	DirDown = iota -1 
-	DirNon
+	DirNone
 	DirUp
 )
-//Byttes plass på Comand og Down, ver OBS! på feil som kan følge av dette.
+
 type OrderType_t int
 const(
 	Down = iota -1 
-	Comand 
+	Command 
 	Up
 )
 
 type Id_t int
 
-type State_t int
-const(
-	Idel = iota
-	DoorOpen 
-	StateUp
-	StateDown
-	Malfunction
-)
 
 
 type Position struct{
@@ -37,14 +41,12 @@ type Position struct{
 }
 
 
-
-
 type Order struct{
-	Floor int
-	OrderType OrderType_t
-	DesignatedElevator Id_t
-	Cost map[Id_t]int
-	OrderId Id_t
+	Floor 				int
+	OrderType 			OrderType_t
+	DesignatedElevator 	Id_t
+	Cost 				map[Id_t]int
+	OrderId 			Id_t
 }
 
 func (order Order) ChangeDesignatedElevator(id Id_t) Order{
@@ -55,12 +57,12 @@ func (order Order) ChangeDesignatedElevator(id Id_t) Order{
 
 
 
+
 type Elev struct{
 	Id Id_t
 	CurentOrder Id_t
 	CurentPosition Position
 	CurentInternalOrders []Id_t 
-	ElevatorStatus State_t
 }
 
 func (elev Elev) changePosition(position Position) Elev{
@@ -117,16 +119,16 @@ func AddElevator(id int){
 }
 
 
-//Comand orderes must have a designatedElevator id representing the elevator it originated from
+
 func AddOrder(newOrder Order) bool{
 	newOrder.OrderId = Id_t(orderIdNr)
 	for _, order := range orders{
-		if newOrder.Floor == order.Floor && newOrder.OrderType == order.OrderType && newOrder.DesignatedElevator == order.DesignatedElevator{
+		if areOrdersEqual(newOrder,order) {
 			return false
 		}
 	} 
 	orders = append(orders,newOrder)
-	if newOrder.OrderType == Comand{
+	if newOrder.OrderType == Command{
 		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(orders[len(orders)-1].OrderId)
 	} else{
 		orders[len(orders)-1] = orders[len(orders)-1].ChangeDesignatedElevator(Id_t(0)) 
@@ -135,12 +137,19 @@ func AddOrder(newOrder Order) bool{
 	return true
 }
 
+
+func areOrdersEqual(newOrder Order, order Order) bool{
+	return newOrder.Floor == order.Floor && newOrder.OrderType == order.OrderType && newOrder.DesignatedElevator == order.DesignatedElevator
+}
+
+
 func RemoveElevator(id int){
 	newDisabelElev := elevators[Id_t(id)]
 	disabeledElevators[Id_t(id)] = newDisabelElev
 	delete(elevators, Id_t(id))
 
 }
+
 
 
 func RemoveOrder(remOrder Order){
@@ -158,9 +167,11 @@ func GetElevators() map[Id_t]Elev{
 }
 
 
+
 func GetDisabeledElevators() map[Id_t]Elev{
 	return disabeledElevators
 }
+
 
 
 func GetOrders() []Order{
@@ -168,9 +179,11 @@ func GetOrders() []Order{
 }
 
 
+
 func GetOrderIdNr() int{
 	return orderIdNr
 }
+
 
 
 func ChangeElevatorPosition(id int, position Position){
@@ -178,19 +191,16 @@ func ChangeElevatorPosition(id int, position Position){
 }
 
 
-func OrderCompleet( id int) {
-	fmt.Println("orders: ", orders)
+
+func OrderComplete( id int) {
 	orderCompleet := GetElevatorCurentOrder(id)
 	for _, order := range orders{
-		fmt.Println("orderCompleet: ", orderCompleet)
 		if order.OrderId == orderCompleet.OrderId{
-			fmt.Println("order; ", order)
 			RemoveOrder(order)
 		}
 	}
 	elevators[Id_t(id)] = elevators[Id_t(id)].ChangeCurentOrder(Id_t(0))
 }
-
 
 
 
@@ -224,7 +234,7 @@ func MergeOrderFromSlave(elevatorsFromSlave map[Id_t]Elev, disabeledElevatorsFro
 		}
 	}
 	for _, singleOrder := range orders {
-		if singleOrder.OrderType == Comand {
+		if singleOrder.OrderType == Command {
 			for _, elev := range elevators {
 				if singleOrder.DesignatedElevator == elev.Id {
 					elevators[singleOrder.OrderId].AddInternalOrder(singleOrder.OrderId)
@@ -234,8 +244,10 @@ func MergeOrderFromSlave(elevatorsFromSlave map[Id_t]Elev, disabeledElevatorsFro
 	}
 }
 
+
+
 func GetElevatorCurentOrder(id int) Order{
-	if int(elevators[Id_t(id)].CurentOrder) == 0{
+	if int(elevators[Id_t(id)].CurentOrder) == 0 {
 		return Order{}
 	}
 	for i, _ := range orders{

@@ -1,7 +1,0 @@
-package ProcessPairControl
-
-import
-(
-	"fmt"
-)
-

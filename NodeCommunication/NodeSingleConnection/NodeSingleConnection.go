@@ -99,10 +99,8 @@ func HandleConnection(	conn 							net.Conn,
 				}
 			
 			}else if e, ok := receiveErr.(net.Error); !ok || ( ok && !e.Timeout() ) {
-				//fmt.Println(receiveErr)
 				connBroke = true
 			}
-
 
 			if connBroke == true && connBrokeMsgSent == false {
 				fmt.Println("A connection error accured")

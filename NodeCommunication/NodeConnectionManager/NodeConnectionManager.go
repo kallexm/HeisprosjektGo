@@ -72,23 +72,26 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	routingTable_ptr	:= NodeRoutingTable.Get_reference_to_routing_table()
 
 	routingTable_ptr.Add_new_routing_entries(
-		NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
-										 	IsOrderDist:	true 						,
-										 	Receive_Ch:		from_OrderDist_Ch			,
-										 	Send_Ch: 		to_OrderDist_Ch				,
-										 	Mutex_Ch:		OrderDist_NodeComm_Mutex_Ch	}	,
+		NodeRoutingTable.RoutingEntry_t{	
+			NodeID:			nodeID 						,
+		 	IsOrderDist:	true 						,
+		 	Receive_Ch:		from_OrderDist_Ch			,
+		 	Send_Ch: 		to_OrderDist_Ch				,
+		 	Mutex_Ch:		OrderDist_NodeComm_Mutex_Ch	}	,
 
-		 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
-		 								 	IsElev:			true 						,
-		 								 	Receive_Ch:		from_ElevCtrl_Ch			,
-		 								 	Send_Ch:		to_ElevCtrl_Ch				,
-		 								 	Mutex_Ch:		ElevCtrl_NodeComm_Mutex_Ch	}	,
+		 NodeRoutingTable.RoutingEntry_t{	
+		 	NodeID:			nodeID 						,
+		 	IsElev:			true 						,
+		 	Receive_Ch:		from_ElevCtrl_Ch			,
+		 	Send_Ch:		to_ElevCtrl_Ch				,
+		 	Mutex_Ch:		ElevCtrl_NodeComm_Mutex_Ch	}	,
 
-		 NodeRoutingTable.RoutingEntry_t{	NodeID:			nodeID 						,
-		 									IsNet:			true 						,
-		 									Receive_Ch:		nodeComm_to_MsgRelay_Ch		,
-		 									Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
-		 									Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
+		 NodeRoutingTable.RoutingEntry_t{	
+		 	NodeID:			nodeID 						,
+			IsNet:			true 						,
+			Receive_Ch:		nodeComm_to_MsgRelay_Ch		,
+			Send_Ch: 		MsgRelay_to_nodeComm_Ch		,
+			Mutex_Ch:		nodeComm_MsgRelay_Mutex_Ch	}	)
 	
 	RoutingTable_Ch <- routingTable_ptr
 	routingTable_ptr = nil
@@ -104,7 +107,6 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 	
 	var bCastListener 			*net.UDPConn
 	var numberOfConnectedSlaves uint8
-
 	var nodeDisconnectedList 	[]uint8
 	var nodeConnectedList 		[]uint8
 
@@ -131,9 +133,9 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 				}else{
 					newRoutingEntry := NodeRoutingTable.RoutingEntry_t{	
-						NodeID: IDofNewConnectedNode,
-						IsExtern: true				,
-						IsMaster: true				}
+						NodeID: 	IDofNewConnectedNode	,
+						IsExtern: 	true					,
+						IsMaster: 	true					}
 
 					handleNewTcpConnection(conn, newRoutingEntry, RoutingTable_Ch)
 					err := setMasterNodeInTable(IDofNewConnectedNode, RoutingTable_Ch)
@@ -149,11 +151,12 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				if nodeConnectionState == STATE_MASTER || nodeConnectionState == STATE_SINGLE {
 					select {
 					case <- nodeComm_MsgRelay_Mutex_Ch:
-						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST		,
-																	ToNodeID: 	nodeID 							,
-																	From:		MessageFormat.NODE_COM			,
-																	FromNodeID: nodeID 							,
-																	MsgType:	MessageFormat.CHANGE_TO_MASTER	}
+						msgHeader := MessageFormat.MessageHeader_t{	
+							To: 		MessageFormat.ORDER_DIST		,
+							ToNodeID: 	nodeID 							,
+							From:		MessageFormat.NODE_COM			,
+							FromNodeID: nodeID 							,
+							MsgType:	MessageFormat.CHANGE_TO_MASTER	}
 						changeToMasterMsg, err := MessageFormat.Encode_msg(msgHeader, []byte(""))
 						checkError(err)
 
@@ -167,11 +170,12 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				}else if nodeConnectionState == STATE_SLAVE {
 					select {
 					case <- nodeComm_MsgRelay_Mutex_Ch:
-						msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.ORDER_DIST 		,
-																	ToNodeID: 	nodeID 							,
-																	From:		MessageFormat.NODE_COM			,
-																	FromNodeID: nodeID 							,
-																	MsgType:	MessageFormat.CHANGE_TO_SLAVE	}
+						msgHeader := MessageFormat.MessageHeader_t{	
+							To: 		MessageFormat.ORDER_DIST 		,
+							ToNodeID: 	nodeID 							,
+							From:		MessageFormat.NODE_COM			,
+							FromNodeID: nodeID 							,
+							MsgType:	MessageFormat.CHANGE_TO_SLAVE	}
 						changeToSlaveMsg, err := MessageFormat.Encode_msg(msgHeader, []byte(""))
 						checkError(err)
 
@@ -272,11 +276,12 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 			case <- nodeComm_MsgRelay_Mutex_Ch:
 				if len(nodeConnectedList) > 0 {
 					connectedNodeID := []byte{byte(nodeConnectedList[len(nodeConnectedList)-1])}
-					msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.MASTER 			,
-																ToNodeID: 	nodeID 							,
-																From:		MessageFormat.NODE_COM			,
-																FromNodeID: nodeID 							,
-																MsgType:	MessageFormat.NODE_CONNECTED	}
+					msgHeader := MessageFormat.MessageHeader_t{	
+						To: 		MessageFormat.MASTER 			,
+						ToNodeID: 	nodeID 							,
+						From:		MessageFormat.NODE_COM			,
+						FromNodeID: nodeID 							,
+						MsgType:	MessageFormat.NODE_CONNECTED	}
 					newNodeConnectedMsg, err := MessageFormat.Encode_msg(msgHeader, connectedNodeID)
 					checkError(err)
 
@@ -289,11 +294,12 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 				}
 				if len(nodeDisconnectedList) > 0 {
 					disconnectedNodeID := []byte{byte(nodeDisconnectedList[len(nodeDisconnectedList)-1])}
-					msgHeader := MessageFormat.MessageHeader_t{	To: 		MessageFormat.MASTER 	,
-																ToNodeID: 	nodeID 					,
-																From:		MessageFormat.NODE_COM	,
-																FromNodeID: nodeID 					,
-																MsgType:	MessageFormat.NODE_DISCONNECTED 			}
+					msgHeader := MessageFormat.MessageHeader_t{	
+						To: 		MessageFormat.MASTER 			,
+						ToNodeID: 	nodeID 							,
+						From:		MessageFormat.NODE_COM			,
+						FromNodeID: nodeID 							,
+						MsgType:	MessageFormat.NODE_DISCONNECTED }
 					nodeDisconnectedMsg, err := MessageFormat.Encode_msg(msgHeader, disconnectedNodeID)
 					checkError(err)
 					
@@ -375,9 +381,10 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 					checkError(err)
 					if err == nil {
-						replyHeader := MessageFormat.MessageHeader_t{ToNodeID: msgHeader.FromNodeID				,
-																	 From: MessageFormat.NODE_COM				,
-																	 MsgType: MessageFormat.NODE_DISCONNECTED	} 
+						replyHeader := MessageFormat.MessageHeader_t{
+							ToNodeID: msgHeader.FromNodeID				,
+							From: MessageFormat.NODE_COM				,
+							MsgType: MessageFormat.NODE_DISCONNECTED	} 
 						msg, _ = MessageFormat.Encode_msg(replyHeader, []byte(""))
 						removedRoutingEntry.Send_Ch <- msg
 						printFromNET("Disconnected node with ID"+string(removedRoutingEntry.NodeID), nodeID, nodeConnectionState)
@@ -389,9 +396,7 @@ func Thread(from_OrderDist_Ch 			<-chan 	[]byte	,
 
 			// ------[ Exit Action ]-------
 			if nodeConnectionState != STATE_SLAVE {
-			// Send message to local elev about no master on the net
-			notifyElevAboutMasterStatus(false, nodeID, nodeID, nodeComm_to_MsgRelay_Ch, nodeComm_MsgRelay_Mutex_Ch)
-
+				notifyElevAboutMasterStatus(false, nodeID, nodeID, nodeComm_to_MsgRelay_Ch, nodeComm_MsgRelay_Mutex_Ch)
 			}
 		// ==========[ End STATE_SLAVE ]===========
 		}

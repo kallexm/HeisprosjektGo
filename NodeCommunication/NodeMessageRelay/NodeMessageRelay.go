@@ -31,28 +31,22 @@ var masterShouldTakeMutexNext = false
 
 func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 	for {
-		if masterShouldTakeMutexNext == false { // remove for if no work
+		if masterShouldTakeMutexNext == false {
 			routingTable_ptr = <- routingTable_Ch
 		}
-		
-		//fmt.Printf("%+v", *routingTable_ptr)
-		//fmt.Println()
-
 
 		for _, tableEntry := range (*routingTable_ptr) {
-			//-------------------------------------- remove if no work
 			if masterShouldTakeMutexNext == true {
+				
 				if tableEntry.IsMaster {
 					masterShouldTakeMutexNext = false
 				}else{
 					continue
 				}
 			}
-			//-------------------------------------- remove if no work
 			select {
 			case tableEntry.Mutex_Ch <- true:
 				continueFor := true
-				//fmt.Println("masterShouldTakeMutexNext: ", masterShouldTakeMutexNext)
 				for continueFor {
 					select {
 					case receivedMsg := <- tableEntry.Receive_Ch:
@@ -62,7 +56,7 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 								//-----------------------------------------------------------------
 								// Routing Entries
 								if msgHeader.To == MessageFormat.MASTER && searchTableEntry.IsMaster == true {
-									
+
 									if msgHeader.From == MessageFormat.ELEVATOR && msgHeader.FromNodeID == 0 {
 										msgHeader.FromNodeID = tableEntry.NodeID
 										sendMsg, _ := MessageFormat.Encode_msg(msgHeader, data)
@@ -110,13 +104,14 @@ func Thread (routingTable_Ch chan *NodeRoutingTable.RoutingTable_t) {
 			}
 			
 		}
-		if masterShouldTakeMutexNext == false { // remove for if no work
+		if masterShouldTakeMutexNext == false {
 			routingTable_Ch <- routingTable_ptr
 			routingTable_ptr = nil
 		}
 		
 	}
 }
+
 
 
 

@@ -32,12 +32,12 @@ const (
 type MsgType_t uint8
 const (
 	BACKUP_DATA_TRANSFER	= iota
-	NEW_ORDER_TO_ELEVATOR			//Order stuct fra ElevatorControl/ElevatorStatus
-	SET_LIGHT						//ButtonPlacement struc fra ElevatorControl/ElvatorDriver, vurder nytt nav siden den kan skru av og på 
+	NEW_ORDER_TO_ELEVATOR			
+	SET_LIGHT						
 	CLEAR_LIGHT
-	ELEVATOR_STATUS_DATA			//position struct, fra ElevatorControl/ElevatorStatus 
-	NEW_ELEVATOR_REQUEST			//Order struct fra ElevatorControl/ElevatorStatus 
-	ORDER_FINISHED_BY_ELEVATOR		//position struct, fra ElevatorControl/ElevatorStatus
+	ELEVATOR_STATUS_DATA			
+	NEW_ELEVATOR_REQUEST			
+	ORDER_FINISHED_BY_ELEVATOR	
 	NEW_ELEVATOR_REQUEST_ACCEPTED 
 	NODE_DISCONNECTED
 	NODE_CONNECTED

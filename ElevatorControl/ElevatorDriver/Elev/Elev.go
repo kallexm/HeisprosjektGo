@@ -41,23 +41,29 @@ const(
 )  
 
 
+
+
 func initLampChannelsMap() map[ElevatorStructs.ButtonType]map[int]int{
 	lamp_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
-		ElevatorStructs.Up:		map[int]int{1: channels.LIGHT_UP1,		2: channels.LIGHT_UP2,		3: channels.LIGHT_UP3,		4: channels.LIGHT_UP4		},
-		ElevatorStructs.Down:	map[int]int{1: channels.LIGHT_DOWN1,	2: channels.LIGHT_DOWN2,	3: channels.LIGHT_DOWN3,	4: channels.LIGHT_DOWN4		},
-		ElevatorStructs.Comand:	map[int]int{1: channels.LIGHT_COMMAND1,	2: channels.LIGHT_COMMAND2,	3: channels.LIGHT_COMMAND3,	4: channels.LIGHT_COMMAND4	}}
+		ElevatorStructs.Up:		map[int]int{
+			1: channels.LIGHT_UP1,		
+			2: channels.LIGHT_UP2,		
+			3: channels.LIGHT_UP3,		
+			4: channels.LIGHT_UP4			},
+
+		ElevatorStructs.Down:	map[int]int{
+			1: channels.LIGHT_DOWN1,	
+			2: channels.LIGHT_DOWN2,	
+			3: channels.LIGHT_DOWN3,	
+			4: channels.LIGHT_DOWN4			},
+
+		ElevatorStructs.Comand:	map[int]int{
+			1: channels.LIGHT_COMMAND1,	
+			2: channels.LIGHT_COMMAND2,	
+			3: channels.LIGHT_COMMAND3,	
+			4: channels.LIGHT_COMMAND4		}}
+
 	return lamp_channel_map
-	
-}
-
-
-
-
-func getLampChannel(floor int, lamp ButtonType) (int, error) {
-	if lamp_channel_map[lamp][floor] == 0{
-		return 0, errors.New("Index out of bounds error 001")
-	}
-	return lamp_channel_map[lamp][floor], nil
 }
 
 
@@ -65,21 +71,25 @@ func getLampChannel(floor int, lamp ButtonType) (int, error) {
 
 func initButtonChannelsMap() map[ElevatorStructs.ButtonType]map[int]int{
 	button_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
-		ElevatorStructs.Up:		map[int]int{1: channels.BUTTON_UP1, 		2: channels.BUTTON_UP2,			3: channels.BUTTON_UP3,			4: channels.BUTTON_UP4		},
-		ElevatorStructs.Down:	map[int]int{1: channels.BUTTON_DOWN1,		2: channels.BUTTON_DOWN2,		3: channels.BUTTON_DOWN3,		4: channels.BUTTON_DOWN4	},
-		ElevatorStructs.Comand:	map[int]int{1: channels.BUTTON_COMMAND1, 	2: channels.BUTTON_COMMAND2,	3: channels.BUTTON_COMMAND3,	4: channels.BUTTON_COMMAND4	}}
+		ElevatorStructs.Up:		map[int]int{
+			1: channels.BUTTON_UP1, 
+			2: channels.BUTTON_UP2,	
+			3: channels.BUTTON_UP3,	
+			4: channels.BUTTON_UP4			},
+
+		ElevatorStructs.Down:	map[int]int{
+			1: channels.BUTTON_DOWN1,		
+			2: channels.BUTTON_DOWN2,		
+			3: channels.BUTTON_DOWN3,	
+			4: channels.BUTTON_DOWN4		},
+
+		ElevatorStructs.Comand:	map[int]int{
+			1: channels.BUTTON_COMMAND1, 	
+			2: channels.BUTTON_COMMAND2,	
+			3: channels.BUTTON_COMMAND3,	
+			4: channels.BUTTON_COMMAND4		}}
+
 	return button_channel_map
-	
-}
-
-
-
-
-func getButtonChannel(floor int, lamp ElevatorStructs.ButtonType) (int, error) {
-	if button_channel_map[lamp][floor] == 0{
-		return 0, errors.New("Index out of bounds error 001")
-	}
-	return button_channel_map[lamp][floor], nil
 }
 
 
@@ -88,7 +98,7 @@ func getButtonChannel(floor int, lamp ElevatorStructs.ButtonType) (int, error) {
 func ElevInit() error{
 	initSuccess := io.Io_init()
 	if(initSuccess != 1){
-		return errors.New("Unable to initialize elevator error 002")
+		return errors.New("Unable to initialize elevator error")
 	}
 	for f := 1; f < N_FLOORS; f++ {
 		var b ButtonType
@@ -104,6 +114,26 @@ func ElevInit() error{
 		return err
 	}
 	return nil
+}
+
+
+
+
+func getLampChannel(floor int, lamp ButtonType) (int, error) {
+	if lamp_channel_map[lamp][floor] == 0{
+		return 0, errors.New("Index out of bounds error")
+	}
+	return lamp_channel_map[lamp][floor], nil
+}
+
+
+
+
+func getButtonChannel(floor int, lamp ElevatorStructs.ButtonType) (int, error) {
+	if button_channel_map[lamp][floor] == 0{
+		return 0, errors.New("Index out of bounds error")
+	}
+	return button_channel_map[lamp][floor], nil
 }
 
 
@@ -142,7 +172,7 @@ func ElevSetButtonLamp(button ElevatorStructs.ButtonType, floor int, value int) 
 
 func ElevSetFloorIndicator(floor int) error{
 	if floor < 1 || floor > N_FLOORS {
-		return errors.New("Flooor out of bounds error 003")
+		return errors.New("Flooor out of bounds error")
 	}
 	floor = floor - 1
 	if floor & 0x02 >= 1{

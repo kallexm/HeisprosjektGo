@@ -8,21 +8,31 @@ package OrderDistributerThread
 ||	Course:  TTK4145 - Real-time Programming, NTNU
 ||	
 ||	Summary of File:
-||		OrderDistributerThread.Thread(...) receives requests from all elevators 
+||		OrderDistributerThread.Thread(...) had to states
+|| 			STATE_MASTER: 	It acts as an order distributer for all connected elevators.
+||						  	1. It gets new orders over the the network from all nodes.
+||						  	2. It Calculate a cost function and assigns the orders to the
+||						  		 best positioned elevator.
+||						  	3. It sends backup versions of the queue to the other
+||							 	orderDistributerThreads which are in STATE_SLAVE.
+||			
+||			STATE_SLAVE:	1. It stores backup versions of the queue and other state data
+||								sent by the only OrderDistributer in STATE_MASTER.
+||							2. It is ready to take over the job as OrderDistributer
+||								in STATE_MASTER if the node disconnects from the master node.
+||								
 ||
 */
 
 
 import
 (
-	"../../MessageFormat"
 	"../OrderQueue"
 	"../OrderEvaluator"
+	"../../MessageFormat"
 	"../../ElevatorControl/ElevatorStructs"
 	
 	"encoding/json"
-	"fmt"
-	//"time"
 )
 
 
@@ -54,10 +64,6 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 	prev_orderDistributerState 	= STATE_SLAVE
 	OrderQueue.AddElevator(int(nodeID))
 
-	// Code to generate local elevator struct
-	// Code to setup queue
-	// Initialization code
-
 
 	for {
 		// ==========[ Begin STATE_MASTER ]===========
@@ -65,7 +71,6 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 			// ------[ Entry Action ]-------
 			if prev_orderDistributerState != orderDistributerState {
-				fmt.Println("OD: [STATE_MASTER]")
 
 				prev_orderDistributerState = orderDistributerState
 			}
@@ -79,59 +84,59 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 				switch resciveMsgHeader.MsgType {
 				case MessageFormat.ORDER_FINISHED_BY_ELEVATOR:
-					fmt.Println("ORDER_FINISHED_BY_ELEVATOR:", data)
 					order := OrderQueue.GetElevatorCurentOrder(int(resciveMsgHeader.FromNodeID))
-					fmt.Println("order GetElevatorCurentOrder: ", order)
-					OrderQueue.OrderCompleet(int(resciveMsgHeader.FromNodeID))
+					OrderQueue.OrderComplete(int(resciveMsgHeader.FromNodeID))
 					redistributeOrders(to_NodeComm_Ch)
 					sendBackupToSlave(to_NodeComm_Ch)
-					//fmt.Println("order.Floor: ", order.Floor, "order.OrderType: ",order.OrderType )
-					setLights(order.Floor,0,order.OrderType,OrderQueue.Id_t(resciveMsgHeader.FromNodeID),to_NodeComm_Ch)
-
-					//
+					setLights(
+						order.Floor,
+						0,
+						order.OrderType,
+						OrderQueue.Id_t(resciveMsgHeader.FromNodeID),
+						to_NodeComm_Ch)
 
 				case MessageFormat.NEW_ELEVATOR_REQUEST:
-					//DU må redistrubuerer ordere
-					fmt.Println("NEW_ELEVATOR_REQUEST:", data)
 					newOrder := decodeNewElevatorRequest(resciveMsgHeader, data)
-					OrderQueue.AddOrder(OrderQueue.Order{Floor: newOrder.Floor, OrderType: OrderQueue.OrderType_t(newOrder.OrderDir),DesignatedElevator: OrderQueue.Id_t(resciveMsgHeader.FromNodeID) ,Cost: map[OrderQueue.Id_t]int{}})
+					OrderQueue.AddOrder(
+						OrderQueue.Order{
+							Floor: 				newOrder.Floor, 
+							OrderType: 			OrderQueue.OrderType_t(newOrder.OrderDir),
+							DesignatedElevator: OrderQueue.Id_t(resciveMsgHeader.FromNodeID),
+							Cost: 				map[OrderQueue.Id_t]int{}					}		)
 					redistributeOrders(to_NodeComm_Ch)
 					sendBackupToSlave(to_NodeComm_Ch)
-					setLights(newOrder.Floor,1,OrderQueue.OrderType_t(newOrder.OrderDir),OrderQueue.Id_t(resciveMsgHeader.FromNodeID),to_NodeComm_Ch)
-					newMsg, err := MessageFormat.Encode_msg(MessageFormat.MessageHeader_t{To: MessageFormat.ELEVATOR, ToNodeID: resciveMsgHeader.FromNodeID, From:MessageFormat.MASTER, MsgType: MessageFormat.NEW_ELEVATOR_REQUEST_ACCEPTED}, []byte{})
-					if err != nil{
-						fmt.Println("Noe gikk galt i lagingen av ACCEPTED meldingen")
-					}
-					fmt.Println("ACCEPTED send")
-					elevators := OrderQueue.GetElevators()
-					fmt.Println("Elevators :", elevators)
+					setLights(
+						newOrder.Floor,
+						1,OrderQueue.OrderType_t(newOrder.OrderDir),
+						OrderQueue.Id_t(resciveMsgHeader.FromNodeID),
+						to_NodeComm_Ch									)
+					newMsg, _ := MessageFormat.Encode_msg(
+						MessageFormat.MessageHeader_t{
+							To: 		MessageFormat.ELEVATOR, 
+							ToNodeID: 	resciveMsgHeader.FromNodeID, 
+							From:		MessageFormat.MASTER, 
+							MsgType: 	MessageFormat.NEW_ELEVATOR_REQUEST_ACCEPTED}, 
+						[]byte{}							)
 					to_NodeComm_Ch <- newMsg
 
 				case MessageFormat.ELEVATOR_STATUS_DATA:
-					fmt.Println("ELEVATOR_STATUS_DATA:", data)
 					newStatus := decodeNewElevatorStatusData(resciveMsgHeader, data)
 					OrderQueue.ChangeElevatorPosition(int(resciveMsgHeader.FromNodeID),newStatus)
-					elevators :=  OrderQueue.GetElevators()
-					fmt.Println("Elevators: ", elevators)
 
 				case MessageFormat.NODE_CONNECTED:
-					fmt.Println("NODE_CONNECTED:", uint8(data[0]))
 					OrderQueue.AddElevator(int(data[0]))
 					iterateOrderListAndSetLights(to_NodeComm_Ch)
 
 				case MessageFormat.NODE_DISCONNECTED:
-					fmt.Println("NODE_DISCONNECTED:", uint8(data[0]))
 					OrderQueue.RemoveElevator(int(data[0]))
 
 				case MessageFormat.CHANGE_TO_MASTER:
 					// Do nothing
 
 				case MessageFormat.CHANGE_TO_SLAVE:
-					fmt.Println("CHANGE_TO_SLAVE")
 					orderDistributerState = STATE_SLAVE
 
 				case MessageFormat.MERGE_ORDERS_REQUEST:
-					fmt.Println("MERGE_ORDERS_REQUEST")
 					slaveOrders := decodeMergeOrdersRequest(resciveMsgHeader, data)
 					OrderQueue.MergeOrderFromSlave(slaveOrders.elevators, slaveOrders.disabeledElevators, slaveOrders.orders)
 					redistributeOrders(to_NodeComm_Ch)
@@ -158,10 +163,9 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 			// ------[ Entry Action ]-------
 			if prev_orderDistributerState != orderDistributerState {
-				fmt.Println("OD: [STATE_SLAVE]")
 				<- OrderDist_NodeComm_Mutex_Ch
 				sendMergeOrdersRequest(to_NodeComm_Ch, nodeID)
-				OrderDist_NodeComm_Mutex_Ch <- true 
+				OrderDist_NodeComm_Mutex_Ch <- true
 
 				prev_orderDistributerState = orderDistributerState
 			}
@@ -173,12 +177,14 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 
 				switch  resciveMsgHeader.MsgType {
 				case MessageFormat.BACKUP_DATA_TRANSFER:
-					fmt.Println("BACKUP_DATA_TRANSFER")
 					backupData := decodeBackupDataTransfer(resciveMsgHeader, data)
-					OrderQueue.BackupWrite(backupData.elevators, backupData.disabeledElevators, backupData.orders, backupData.orderIdNr)
+					OrderQueue.BackupWrite(
+						backupData.elevators 			,
+						backupData.disabeledElevators 	,
+						backupData.orders 				,
+						backupData.orderIdNr 			)
 
 				case MessageFormat.CHANGE_TO_MASTER:
-					fmt.Println("CHANGE_TO_MASTER")
 					orderDistributerState = STATE_MASTER
 
 				case MessageFormat.CHANGE_TO_SLAVE:
@@ -197,54 +203,51 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 }
 
 func generateMsg(msgType MessageFormat.MsgType_t, toNodeId int, to MessageFormat.Address_t, inputStruct interface{}) []byte{
-	msgHeader := MessageFormat.MessageHeader_t{To: to,ToNodeID: uint8(toNodeId), From: MessageFormat.MASTER,MsgType:msgType}
-	data, err := json.Marshal(inputStruct)
-	if err != nil{
-		fmt.Println("Error in GenerateMsg")
-	}
-	msg, err := MessageFormat.Encode_msg(msgHeader, data)
-	if err != nil{
-		fmt.Println("Error in GenerateMsg Msg Encoding")
-	}
+	msgHeader := MessageFormat.MessageHeader_t{
+		To: 		to 						,
+		ToNodeID: 	uint8(toNodeId) 		,
+		From: 		MessageFormat.MASTER 	,
+		MsgType:	msgType 				}
+
+	data, _ := json.Marshal(inputStruct)
+	msg, _ 	:= MessageFormat.Encode_msg(msgHeader, data)
 	return msg
-	
 }
+
 
 
 func redistributeOrders(to_NodeComm_Ch chan<-[]byte){
 	elevators := OrderQueue.GetElevators()
-	ordersToBeAsigned := OrderEvaluator.CalculateOrderAsignment(OrderQueue.GetOrders(), OrderQueue.GetElevators())
-	fmt.Println("Orders to be asigned : ", ordersToBeAsigned)
-	for id,_ := range ordersToBeAsigned{
-		fmt.Println("Orders to be asigned : ", ordersToBeAsigned[id])
+	ordersToBeAsigned := OrderEvaluator.CalculateOrderAssignment(OrderQueue.GetOrders(), OrderQueue.GetElevators())
+	for id,_ := range ordersToBeAsigned {
 		elevators[id] = elevators[id].ChangeCurentOrder(ordersToBeAsigned[id].OrderId)
-		newOrder := ElevatorStructs.Order{Floor: (*ordersToBeAsigned[id]).Floor,OrderDir: ElevatorStructs.Dir((*ordersToBeAsigned[id]).OrderType)}
+		newOrder := ElevatorStructs.Order{
+			Floor: 		(*ordersToBeAsigned[id]).Floor,
+			OrderDir: 	ElevatorStructs.Dir((*ordersToBeAsigned[id]).OrderType)}
 		to_NodeComm_Ch <- generateMsg(MessageFormat.NEW_ORDER_TO_ELEVATOR, int(id), MessageFormat.ELEVATOR,newOrder)
 	}
 }
 
 
-func sendBackupToSlave(to_NodeComm_Ch chan<- 	[]byte){
-	backUp := backUpStruct{}
+
+func sendBackupToSlave(to_NodeComm_Ch chan<- []byte){
+	backUp 						:= backUpStruct{}
 	backUp.orders 				= OrderQueue.GetOrders()
 	backUp.elevators 			= OrderQueue.GetElevators()
 	backUp.disabeledElevators 	= OrderQueue.GetDisabeledElevators()
 	backUp.orderIdNr 			= OrderQueue.GetOrderIdNr()
-	fmt.Println("Backup to slave send")
 	to_NodeComm_Ch <- generateMsg(MessageFormat.BACKUP_DATA_TRANSFER,0,MessageFormat.BACKUP, backUp)
 }
 
 
+
 func sendMergeOrdersRequest(to_NodeComm_Ch chan<- []byte, nodeID uint8) {
-	dataToMerge := backUpStruct{}
+	dataToMerge 					:= backUpStruct{}
 	dataToMerge.orders 				= OrderQueue.GetOrders()
 	dataToMerge.elevators 			= OrderQueue.GetElevators()
 	dataToMerge.disabeledElevators 	= OrderQueue.GetDisabeledElevators()
 	dataToMerge.orderIdNr 			= 0
-	data, err := json.Marshal(dataToMerge)
-	if err != nil{
-		fmt.Println("Error in sendMergeOrdersRequest")
-	}
+	data, _ := json.Marshal(dataToMerge)
 
 	msgHeader := MessageFormat.MessageHeader_t{	
 		To: 			MessageFormat.MASTER 				,
@@ -252,70 +255,93 @@ func sendMergeOrdersRequest(to_NodeComm_Ch chan<- []byte, nodeID uint8) {
 		From: 			MessageFormat.BACKUP 				,
 		FromNodeID: 	nodeID 								,
 		MsgType: 		MessageFormat.MERGE_ORDERS_REQUEST	}
-	mergeMsg, err := MessageFormat.Encode_msg(msgHeader, data)
-	if err != nil{
-		fmt.Println("Error in sendMergeOrdersRequest Msg Encoding")
-	}
+	mergeMsg, _ := MessageFormat.Encode_msg(msgHeader, data)
+	
 	to_NodeComm_Ch <- mergeMsg
 }
 	
 
+
 func decodeNewElevatorRequest(msgHeader MessageFormat.MessageHeader_t, data []byte) ElevatorStructs.Order{
 	var newOrder ElevatorStructs.Order
-	if err:= json.Unmarshal(data, &newOrder); err != nil {
-		fmt.Println("Error in decodeNewElevatorRequest: ", err)
-	}
+	json.Unmarshal(data, &newOrder)
 	return newOrder
 }
 
 
+
 func decodeBackupDataTransfer(msgHeader MessageFormat.MessageHeader_t, data []byte) backUpStruct {
 	var backupData backUpStruct
-	if err := json.Unmarshal(data, &backupData); err != nil {
-		fmt.Println("Error in decodeBackupDataTransfer: ", err)
-	}
+	json.Unmarshal(data, &backupData)
 	return backupData
 }
 
 
+
 func decodeMergeOrdersRequest(msgHeader MessageFormat.MessageHeader_t, data []byte)	backUpStruct {
 	var slaveOrders backUpStruct
-	if err := json.Unmarshal(data, &slaveOrders); err != nil {
-		fmt.Println("Error in decodeMergeOrdersRequest: ", err)
-	}
+	json.Unmarshal(data, &slaveOrders)
 	return slaveOrders
-}
-
-
-func setLights(floor int, value int, orderType OrderQueue.OrderType_t, id OrderQueue.Id_t, to_NodeComm_Ch chan<- 	[]byte){
-	if ( orderType == OrderQueue.Comand){
-		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType: ElevatorStructs.Comand, Value: value})
-		return
-	}
-	elevators := OrderQueue.GetElevators()
-	for id, _ := range elevators{
-		to_NodeComm_Ch <- generateMsg(MessageFormat.SET_LIGHT, int(id), MessageFormat.ELEVATOR, ElevatorStructs.ButtonPlacement{Floor: floor, ButtonType: ElevatorStructs.ButtonType(orderType), Value: value})
-	}
-	
-}
-
-
-func iterateOrderListAndSetLights(to_NodeComm_Ch chan<- []byte) {
-	orders := OrderQueue.GetOrders()
-	for _, singleOrder := range orders {
-		setLights(singleOrder.Floor, 1, singleOrder.OrderType, singleOrder.DesignatedElevator, to_NodeComm_Ch)
-	}
 }
 
 
 
 func decodeNewElevatorStatusData(msgHeader MessageFormat.MessageHeader_t, data []byte) OrderQueue.Position{
 	var newPosition ElevatorStructs.Position
-	if err := json.Unmarshal(data, &newPosition); err != nil{
-		fmt.Println("Error in decodeNewElevatorRequest: ", err)
-	}
+	json.Unmarshal(data, &newPosition)
 	return OrderQueue.Position{Floor: newPosition.Floor, Dir: OrderQueue.Dir_t(newPosition.Dir)}
 }
+
+
+
+func setLights(floor int, value int, orderType OrderQueue.OrderType_t, id OrderQueue.Id_t, to_NodeComm_Ch chan<- 	[]byte){
+	if orderType == OrderQueue.Command {
+		setLightStruct := ElevatorStructs.ButtonPlacement{
+			Floor:		 	floor 					,
+			ButtonType:	 	ElevatorStructs.Command	,
+			Value: 			value 					}
+
+		setLightMsg := generateMsg(
+			MessageFormat.SET_LIGHT	,
+			int(id)					, 
+			MessageFormat.ELEVATOR  ,
+			setLightStruct			)
+		to_NodeComm_Ch <- setLightMsg
+		return
+	}
+	elevators := OrderQueue.GetElevators()
+	for id, _ := range elevators{
+		setLightStruct := ElevatorStructs.ButtonPlacement{
+			Floor:		 	floor 									,
+			ButtonType:	 	ElevatorStructs.ButtonType(orderType)	,
+			Value: 			value 									}
+
+		setLightMsg := generateMsg(
+			MessageFormat.SET_LIGHT ,
+			int(id) 				,
+			MessageFormat.ELEVATOR 	,
+			setLightStruct			)
+		to_NodeComm_Ch <- setLightMsg
+	}
+}
+
+
+
+func iterateOrderListAndSetLights(to_NodeComm_Ch chan<- []byte) {
+	orders := OrderQueue.GetOrders()
+	for _, singleOrder := range orders {
+		setLights(
+			singleOrder.Floor 				,
+			1								, 
+			singleOrder.OrderType 			, 
+			singleOrder.DesignatedElevator	, 
+			to_NodeComm_Ch 					)
+	}
+}
+
+
+
+
 
 
 

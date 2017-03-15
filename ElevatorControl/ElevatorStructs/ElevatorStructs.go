@@ -13,32 +13,27 @@ package ElevatorStructs
 ||
 */
 
-import(
-	//"../ElevatorDriver/Elev"
-	//"../ElevatorDriver/simulator/client"
-)
 
 
-//Data types from Elev
 type ButtonType int
 const(
 	Down ButtonType = iota - 1
-	Comand
+	Command
 	Up
 	Door
 )
 
-//Struckt originaly from Driver
+
 type ButtonPlacement struct{
 	Floor 		int
 	ButtonType 	ButtonType
 	Value 		int
 }
 
-//Data types from Status
+
 type State int
 const(
-	StateIdel 		= iota
+	StateIdle 		= iota
 	StateDoorOpen 
 	StateUp
 	StateDown
@@ -47,25 +42,24 @@ const(
 
 type Dir int
 const(
-	DirDown 	= iota -1 
-	DirNon
+	DirDown = iota -1 
+	DirNone
 	DirUp
 )
 
 
-
-//Struct from Status
 type Order struct{
 	Floor 	 int 
 	OrderDir Dir
 }
+
 
 type Position struct{
 	Floor 	 int
 	Dir 	 Dir
 }
 
-//Struct from ControlThread
-type OrderCompletStruck struct{
-	OrderComplet bool
+
+type OrderCompleteStruct struct{
+	OrderComplete bool
 }

@@ -45,47 +45,42 @@ func main() {
 	nodeID := getNodeIDfromStdIO()
 	
 	
-	go NodeConnectionManager.Thread(	OrderDist_to_NodeComm_Ch	,
-										NodeComm_to_OrderDist_Ch	,
-										OrderDist_NodeComm_Mutex_Ch	,
-										ElevCtrl_to_NodeComm_Ch		,
-										NodeComm_to_ElevCtrl_Ch		,
-										ElevCtrl_NodeComm_Mutex_Ch	,
-										NodeComm_exit_Ch			,
-										nodeID 						)
+	go NodeConnectionManager.Thread(	
+		OrderDist_to_NodeComm_Ch	,
+		NodeComm_to_OrderDist_Ch	,
+		OrderDist_NodeComm_Mutex_Ch	,
+		ElevCtrl_to_NodeComm_Ch		,
+		NodeComm_to_ElevCtrl_Ch		,
+		ElevCtrl_NodeComm_Mutex_Ch	,
+		NodeComm_exit_Ch			,
+		nodeID 						)
 														  
-	go OrderDistributerThread.Thread(	NodeComm_to_OrderDist_Ch	,
-									 	OrderDist_to_NodeComm_Ch	,
-									 	OrderDist_NodeComm_Mutex_Ch ,
-									 	OrderDist_exit_Ch       	,
-									 	nodeID 						)
+	go OrderDistributerThread.Thread(	
+		NodeComm_to_OrderDist_Ch	,
+	 	OrderDist_to_NodeComm_Ch	,
+	 	OrderDist_NodeComm_Mutex_Ch ,
+	 	OrderDist_exit_Ch       	,
+	 	nodeID 						)
 
-	go ElevatorControlThread.Thread(	NodeComm_to_ElevCtrl_Ch		,
-										ElevCtrl_to_NodeComm_Ch		,
-										ElevCtrl_NodeComm_Mutex_Ch	,
-	                                	ElevCtrl_exit_Ch        	)
+	go ElevatorControlThread.Thread(
+		NodeComm_to_ElevCtrl_Ch		,
+		ElevCtrl_to_NodeComm_Ch		,
+		ElevCtrl_NodeComm_Mutex_Ch	,
+    	ElevCtrl_exit_Ch        	)
 	
 	
 	if <- NodeComm_exit_Ch {
 		fmt.Println("Network thread exited normaly")
-	} else {
-		fmt.Println("Notwork thread exited with error")
 	}
-	
 	if <- OrderDist_exit_Ch {
 		fmt.Println("Order distributer thread exited normaly")
-	} else {
-		fmt.Println("Order distributer thread exited with error")
 	}
-	
 	if <- ElevCtrl_exit_Ch {
 		fmt.Println("Elevator control thread exited normaly")
-	} else {
-		fmt.Println("Elevator control thread exited with error")
 	}
-
 	fmt.Println("exiting main")
 }
+
 
 
 func getNodeIDfromStdIO() uint8 {

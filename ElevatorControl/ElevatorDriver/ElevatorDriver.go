@@ -30,7 +30,7 @@ func initButtonStatusMap() map[ElevatorStructs.ButtonType]map[int]int {
 	button_channel_map := map[ElevatorStructs.ButtonType]map[int]int{
 		ElevatorStructs.Up:		map[int]int{1:0, 2:0, 3:0, 4:0},
 		ElevatorStructs.Down:	map[int]int{1:0, 2:0, 3:0, 4:0},
-		ElevatorStructs.Comand:	map[int]int{1:0, 2:0, 3:0, 4:0}}
+		ElevatorStructs.Command:	map[int]int{1:0, 2:0, 3:0, 4:0}}
 	return button_channel_map
 }
 

@@ -1,4 +1,15 @@
 package ElevatorControlThread 
+/*
+||	File: ElevatorControl.go
+||
+||	Authors: 
+||
+||	Date: 	 Spring 2017
+||	Course:  TTK4145 - Real-time Programming, NTNU
+||	
+||	Summary of File: 
+||		
+*/
 
 import
 (
@@ -29,8 +40,8 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 	reSendOrderTimer_Ch 	:= make(chan bool)
 	orderComplete_Ch 		= make(chan bool, 1)
 	masterOnNet_Ch          = make(chan bool, 1)
-	from_MsgRelay_Ch 	= from_MsgRelay_Ch_
-	to_MsgRelay_Ch 		= to_MsgRelay_Ch_
+	from_MsgRelay_Ch 		= from_MsgRelay_Ch_
+	to_MsgRelay_Ch 			= to_MsgRelay_Ch_
 
 	masterOnNet = false 
 
@@ -51,7 +62,7 @@ func Thread(from_MsgRelay_Ch_ <-chan []byte, to_MsgRelay_Ch_ chan<- []byte, mute
 			//fmt.Println("Fikk mutex_Ec_Ch")
 			select{	
 			case <- orderComplete_Ch:
-				to_MsgRelay_Ch <- generateMsg(MessageFormat.ORDER_FINISHED_BY_ELEVATOR,ElevatorStructs.OrderCompletStruck{OrderComplet: true})
+				to_MsgRelay_Ch <- generateMsg(MessageFormat.ORDER_FINISHED_BY_ELEVATOR,ElevatorStructs.OrderCompleteStruct{OrderComplete: true})
 			case masterOnNet = <- masterOnNet_Ch:
 				to_MsgRelay_Ch <- generateMsg(MessageFormat.ELEVATOR_STATUS_DATA,ElevatorStatus.GetPosition())
 			case getButton 	:= <- getButton_Ch:

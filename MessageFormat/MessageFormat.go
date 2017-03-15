@@ -1,6 +1,6 @@
 package MessageFormat
 /*
-||	File: MessageFormat
+||	File: MessageFormat.go
 ||
 ||	Authors: 
 ||

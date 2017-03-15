@@ -99,7 +99,7 @@ func init(){
 	elevators = make(map[Id_t]Elev)
 	disabeledElevators = make(map[Id_t]Elev)
 	orders = make([]Order,0)
-	orderIdNr = 0
+	orderIdNr = 1
 }
 
 func AddElevator(id int){
@@ -127,7 +127,7 @@ func AddOrder(newOrder Order) bool{
 	} 
 	orders = append(orders,newOrder)
 	if newOrder.OrderType == Comand{
-		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(orders[len(orders)-1].orderId)
+		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(orders[len(orders)-1].OrderId)
 	} else{
 		orders[len(orders)-1] = orders[len(orders)-1].ChangeDesignatedElevator(Id_t(0)) 
 	}
@@ -181,7 +181,7 @@ func ChangeElevatorPosition(id int, position Position){
 func OrderCompleet( id int) {
 	for _, order := range orders{
 		if order.OrderId == Id_t(id){
-			RemoveOrder(*(elevators[Id_t(id)].CurentOrder))
+			RemoveOrder(order)
 		}
 	}
 	elevators[Id_t(id)] = elevators[Id_t(id)].ChangeCurentOrder(Id_t(0))
@@ -203,11 +203,28 @@ func MergeOrderFromSlave(elevatorsFromSlave map[Id_t]Elev, disabeledElevatorsFro
 	for _, newOrder := range ordersFromSlave {
 		_ = AddOrder(newOrder)
 	}
-
 	for _, elevFromSlave := range elevatorsFromSlave {
 		for _, elevInMaster := range elevators {
 			if elevFromSlave.Id != elevInMaster.Id {
-
+				elevFromSlave.CurentInternalOrders = []Id_t{}
+				elevators[elevFromSlave.Id] = elevFromSlave
+			}
+		}
+	}
+	for _, disabledElevFromSlave := range disabeledElevatorsFromSlave {
+		for _, disabledElevInMaster := range disabeledElevators {
+			if disabledElevFromSlave.Id != disabledElevInMaster.Id {
+				disabledElevFromSlave.CurentInternalOrders = []Id_t{}
+				disabeledElevators[disabledElevFromSlave.Id] = disabledElevFromSlave
+			}
+		}
+	}
+	for _, singleOrder := range orders {
+		if singleOrder.OrderType == Comand {
+			for _, elev := range elevators {
+				if singleOrder.DesignatedElevator == elev.Id {
+					elevators[singleOrder.OrderId].AddInternalOrder(singleOrder.OrderId)
+				}
 			}
 		}
 	}

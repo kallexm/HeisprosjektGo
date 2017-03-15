@@ -73,7 +73,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 			// ------[ When in state, do ]-------
 			select {
 			case resciveMsg := <- from_NodeComm_Ch:
-				resciveMsgHeader, data, err := MessageFormat.Decode_msg(resciveMsg)
+				resciveMsgHeader, data, _ := MessageFormat.Decode_msg(resciveMsg)
 
 				<- OrderDist_NodeComm_Mutex_Ch
 
@@ -169,7 +169,7 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 			// ------[ When in state, do ]-------
 			select {
 			case resciveMsg := <- from_NodeComm_Ch:
-				resciveMsgHeader, data, err := MessageFormat.Decode_msg(resciveMsg)
+				resciveMsgHeader, data, _ := MessageFormat.Decode_msg(resciveMsg)
 
 				switch  resciveMsgHeader.MsgType {
 				case MessageFormat.BACKUP_DATA_TRANSFER:
@@ -212,7 +212,6 @@ func generateMsg(msgType MessageFormat.MsgType_t, toNodeId int, to MessageFormat
 
 
 func redistributeOrders(to_NodeComm_Ch chan<-[]byte){
-<<<<<<< HEAD
 	elevators := OrderQueue.GetElevators()
 	ordersToBeAsigned := OrderEvaluator.CalculateOrderAsignment(OrderQueue.GetOrders(), OrderQueue.GetElevators())
 	fmt.Println("Orders to be asigned : ", ordersToBeAsigned)
@@ -237,7 +236,7 @@ func sendBackupToSlave(to_NodeComm_Ch chan<- 	[]byte){
 
 
 func sendMergeOrdersRequest(to_NodeComm_Ch chan<- []byte, nodeID uint8) {
-	dataToMerge := backUpStruct
+	dataToMerge := backUpStruct{}
 	dataToMerge.orders 				= OrderQueue.GetOrders()
 	dataToMerge.elevators 			= OrderQueue.GetElevators()
 	dataToMerge.disabeledElevators 	= OrderQueue.GetDisabeledElevators()

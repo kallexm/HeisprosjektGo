@@ -167,9 +167,7 @@ func newFloorReached(floor int){
 	if orderComplete == true{
 		// Do stuff related to order complete
 		//Må legg til tilstandsendring, og starting av lys.
-		fmt.Println("Length chanel :", len(orderComplete_Ch))
 		orderComplete_Ch <- true
-		fmt.Println("Length chanel :", len(orderComplete_Ch))
 		ElevatorDriver.SetLight(ElevatorStructs.ButtonPlacement{Floor:0,ButtonType:ElevatorStructs.Door,Value:1})
 	}
 	fmt.Println("Motor dir is: ", motorDir)

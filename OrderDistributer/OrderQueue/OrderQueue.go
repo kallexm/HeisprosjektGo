@@ -99,7 +99,7 @@ func init(){
 	elevators = make(map[Id_t]Elev)
 	disabeledElevators = make(map[Id_t]Elev)
 	orders = make([]Order,0)
-	orderIdNr = 0
+	orderIdNr = 1
 }
 
 func AddElevator(id int){
@@ -127,7 +127,7 @@ func AddOrder(newOrder Order) bool{
 	} 
 	orders = append(orders,newOrder)
 	if newOrder.OrderType == Comand{
-		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(orders[len(orders)-1].orderId)
+		elevators[newOrder.DesignatedElevator] = elevators[newOrder.DesignatedElevator].AddInternalOrder(orders[len(orders)-1].OrderId)
 	} else{
 		orders[len(orders)-1] = orders[len(orders)-1].ChangeDesignatedElevator(Id_t(0)) 
 	}
@@ -179,9 +179,13 @@ func ChangeElevatorPosition(id int, position Position){
 
 
 func OrderCompleet( id int) {
+	fmt.Println("orders: ", orders)
+	orderCompleet := GetElevatorCurentOrder(id)
 	for _, order := range orders{
-		if order.OrderId == Id_t(id){
-			RemoveOrder(*(elevators[Id_t(id)].CurentOrder))
+		fmt.Println("orderCompleet: ", orderCompleet)
+		if order.OrderId == orderCompleet.OrderId{
+			fmt.Println("order; ", order)
+			RemoveOrder(order)
 		}
 	}
 	elevators[Id_t(id)] = elevators[Id_t(id)].ChangeCurentOrder(Id_t(0))
@@ -211,4 +215,16 @@ func MergeOrderFromSlave(elevatorsFromSlave map[Id_t]Elev, disabeledElevatorsFro
 			}
 		}
 	}
+}
+
+func GetElevatorCurentOrder(id int) Order{
+	if int(elevators[Id_t(id)].CurentOrder) == 0{
+		return Order{}
+	}
+	for i, _ := range orders{
+		if orders[i].OrderId == elevators[Id_t(id)].CurentOrder{
+			return orders[i]
+		}
+	} 
+	return Order{}
 }

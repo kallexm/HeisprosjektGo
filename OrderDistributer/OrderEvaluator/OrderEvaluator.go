@@ -22,6 +22,7 @@ func CalculateOrderAsignment(orders []OrderQueue.Order, elevators map[OrderQueue
 
 func asigneCostToOrders(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t]OrderQueue.Elev){
 	fmt.Println("Elevators: ", elevators)
+	fmt.Println("Orders: ", orders)
 	for _, order := range orders{
 		for _, elev := range elevators{
 			cost := 0
@@ -29,15 +30,19 @@ func asigneCostToOrders(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t
 				order.Cost[elev.Id] = INF
 				continue
 			} 
-			if (*elev.CurentOrder).OrderType == OrderQueue.Comand && requierTurning(elev,order){
-				order.Cost[elev.Id] = INF
-				continue
+			if elev.CurentOrder != 0{
+				curentOrder := OrderQueue.GetElevatorCurentOrder(int(elev.Id))
+				fmt.Println("CurentOrder: ", curentOrder)
+				if curentOrder.OrderType == OrderQueue.Comand && requierTurning(elev,order){
+					order.Cost[elev.Id] = INF
+					continue
+				}
 			}
 			if requierTurning(elev,order){
 				fmt.Println("Requiered turing")
 				cost += TURNING_COST
 			}
-			if requierStop(elev,order){
+			if requierStop(elev,order,orders){
 				fmt.Println("requierStop")
 				cost += STOP_COST
 			}
@@ -68,14 +73,19 @@ func requierTurning(elev OrderQueue.Elev, order OrderQueue.Order) bool{
 
 }
 
-func requierStop(elev OrderQueue.Elev, order OrderQueue.Order) bool{
-	if elev.CurentPosition.Floor < order.Floor && order.Floor < elev.CurentOrder.Floor  {
+func requierStop(elev OrderQueue.Elev, order OrderQueue.Order, orders []OrderQueue.Order) bool{
+	curentOrder := OrderQueue.GetElevatorCurentOrder(int(elev.Id))
+	if (curentOrder.OrderId == 0){
+		return false
+	}	
+	if elev.CurentPosition.Floor < order.Floor && order.Floor < curentOrder.Floor  {
 		return true
-	} else if elev.CurentOrder.Floor > order.Floor && order.Floor > elev.CurentOrder.Floor{
+	} else if elev.CurentPosition.Floor > order.Floor && order.Floor > curentOrder.Floor{
 		return true
 	} else {
 		return false
 	}
+	return false
 }
 
 /*func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t]OrderQueue.Elev) map[OrderQueue.Id_t]*OrderQueue.Order{
@@ -148,7 +158,7 @@ func asigneOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue
 	}*/
 	_, asignedOrders := tryCombo(sortedOrderList)
 	for asignedId, _ := range asignedOrders{
-		elevators[asignedId] = elevators[asignedId].ChangeCurentOrder(asignedOrders[asignedId])
+		elevators[asignedId] = elevators[asignedId].ChangeCurentOrder(asignedOrders[asignedId].OrderId)
 		*asignedOrders[asignedId] = (*asignedOrders[asignedId]).ChangeDesignatedElevator(asignedId)
 	}
 	return asignedOrders

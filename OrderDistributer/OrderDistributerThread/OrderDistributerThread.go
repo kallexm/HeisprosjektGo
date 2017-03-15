@@ -72,11 +72,12 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 				switch resciveMsgHeader.MsgType {
 				case MessageFormat.ORDER_FINISHED_BY_ELEVATOR:
 					fmt.Println("ORDER_FINISHED_BY_ELEVATOR:", data)
-					elevators := OrderQueue.GetElevators()
-					order := *(elevators[OrderQueue.Id_t(resciveMsgHeader.FromNodeID)].CurentOrder)
+					order := OrderQueue.GetElevatorCurentOrder(int(resciveMsgHeader.FromNodeID))
+					fmt.Println("order GetElevatorCurentOrder: ", order)
 					OrderQueue.OrderCompleet(int(resciveMsgHeader.FromNodeID))
 					redistributeOrders(to_NodeComm_Ch)
 					sendBackupToSlave(to_NodeComm_Ch)
+					//fmt.Println("order.Floor: ", order.Floor, "order.OrderType: ",order.OrderType )
 					setLights(order.Floor,0,order.OrderType,OrderQueue.Id_t(resciveMsgHeader.FromNodeID),to_NodeComm_Ch)
 
 					//
@@ -84,10 +85,8 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 				case MessageFormat.NEW_ELEVATOR_REQUEST:
 					//DU må redistrubuerer ordere
 					fmt.Println("NEW_ELEVATOR_REQUEST:", data)
-					elevators := OrderQueue.GetElevators()
 					newOrder := decodeNewElevatorRequest(resciveMsgHeader, data)
 					OrderQueue.AddOrder(OrderQueue.Order{Floor: newOrder.Floor, OrderType: OrderQueue.OrderType_t(newOrder.OrderDir),DesignatedElevator: OrderQueue.Id_t(resciveMsgHeader.FromNodeID) ,Cost: map[OrderQueue.Id_t]int{}})
-					fmt.Println("Elevators :", elevators)
 					redistributeOrders(to_NodeComm_Ch)
 					sendBackupToSlave(to_NodeComm_Ch)
 					setLights(newOrder.Floor,1,OrderQueue.OrderType_t(newOrder.OrderDir),OrderQueue.Id_t(resciveMsgHeader.FromNodeID),to_NodeComm_Ch)
@@ -96,6 +95,8 @@ func Thread(from_NodeComm_Ch 			<-chan 	[]byte	,
 						fmt.Println("Noe gikk galt i lagingen av ACCEPTED meldingen")
 					}
 					fmt.Println("ACCEPTED send")
+					elevators := OrderQueue.GetElevators()
+					fmt.Println("Elevators :", elevators)
 					to_NodeComm_Ch <- newMsg
 					// Implement
 
@@ -221,8 +222,10 @@ func generateMsg(msgType MessageFormat.MsgType_t, toNodeId int, to MessageFormat
 func redistributeOrders(to_NodeComm_Ch chan<-[]byte){
 	elevators := OrderQueue.GetElevators()
 	ordersToBeAsigned := OrderEvaluator.CalculateOrderAsignment(OrderQueue.GetOrders(), OrderQueue.GetElevators())
+	fmt.Println("Orders to be asigned : ", ordersToBeAsigned)
 	for id,_ := range ordersToBeAsigned{
-		elevators[id].ChangeCurentOrder(ordersToBeAsigned[id])
+		fmt.Println("Orders to be asigned : ", ordersToBeAsigned[id])
+		elevators[id] = elevators[id].ChangeCurentOrder(ordersToBeAsigned[id].OrderId)
 		newOrder := ElevatorStructs.Order{Floor: (*ordersToBeAsigned[id]).Floor,OrderDir: ElevatorStructs.Dir((*ordersToBeAsigned[id]).OrderType)}
 		to_NodeComm_Ch <- generateMsg(MessageFormat.NEW_ORDER_TO_ELEVATOR, int(id), MessageFormat.ELEVATOR,newOrder)
 	}

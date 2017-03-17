@@ -13,8 +13,8 @@ package ElevatorDriver
 */
 
 import(
-	//./Elev"
-	"./simulator/client"
+	"./Elev"
+	//"./simulator/client"
 	
 	"../ElevatorStructs"
 

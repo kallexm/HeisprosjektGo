@@ -13,8 +13,8 @@ package ElevatorControlThread
 
 import
 (
-	//"../ElevatorDriver/Elev"
-	"../ElevatorDriver/simulator/client"
+	"../ElevatorDriver/Elev"
+	//"../ElevatorDriver/simulator/client"
 	
 	"../ElevatorDriver"
 	"../ElevatorStatus"

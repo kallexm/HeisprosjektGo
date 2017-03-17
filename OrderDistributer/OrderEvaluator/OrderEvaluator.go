@@ -16,6 +16,7 @@ package OrderEvaluator
 import
 (
 	"../OrderQueue"
+	"fmt"
 )
 
 
@@ -29,7 +30,8 @@ const INF 			= 100000
 
 func CalculateOrderAssignment(orders []OrderQueue.Order, elevators map[OrderQueue.Id_t]OrderQueue.Elev) map[OrderQueue.Id_t]*OrderQueue.Order{
 	assignCostToOrders(orders, elevators)
-	return assignOrdersToElevators(orders,elevators)
+	asignedOrders := assignOrdersToElevators(orders,elevators)
+	return asignedOrders
 }
 
 
@@ -127,6 +129,17 @@ func assignOrdersToElevators(orders []OrderQueue.Order, elevators map[OrderQueue
 	}
 	
 	_, asignedOrders := tryOrderCombo(sortedOrderList)
+	for id, _ := range asignedOrders{
+		for idCost, _ := range asignedOrders[id].Cost{
+			if _, ok := asignedOrders[id]; !ok{
+				continue
+			}
+			fmt.Println("AsigneOrders; ", asignedOrders[id])
+			if asignedOrders[id].Cost[idCost] == INF && id == idCost{
+				delete(asignedOrders, id)		
+			}	
+		}	
+	} 
 	for asignedId, _ := range asignedOrders{
 		elevators[asignedId] = elevators[asignedId].ChangeCurentOrder(asignedOrders[asignedId].OrderId)
 		*asignedOrders[asignedId] = (*asignedOrders[asignedId]).ChangeDesignatedElevator(asignedId)
@@ -148,16 +161,24 @@ func tryOrderCombo(sortedOrderList map[OrderQueue.Id_t][]*OrderQueue.Order) (int
 	tempCost := INF
 	for firstId, _ := range sortedOrderList{
 		for secondId, _ := range sortedOrderList{
+			fmt.Println("iterasjo")
 			if firstId == secondId{
 				continue
 			}
+			fmt.Println("1 First order len", len(sortedOrderList[firstId]), "Second Order len: ", len(sortedOrderList[secondId]))
 			if len(sortedOrderList[secondId]) == 0 || len(sortedOrderList[firstId]) == 0{
 				uniceOrder = true
 				continue
 			}
 			if sortedOrderList[firstId][0].OrderId == sortedOrderList[secondId][0].OrderId{
 				for id, _ := range sortedOrderList{
+					if len(sortedOrderList[secondId]) == 0 || len(sortedOrderList[firstId]) == 0{
+						uniceOrder = true
+						continue
+					}	
+					fmt.Println("2 First order len", len(sortedOrderList[firstId]), "Second Order len: ", len(sortedOrderList[secondId]))
 					if firstId == id && len(sortedOrderList[firstId]) == 1 && len(sortedOrderList[secondId]) != 1{
+						fmt.Println("Second Id lentght: ", len(sortedOrderList[secondId]))
 						temp := sortedOrderList[secondId]
 						sortedOrderList[secondId] = sortedOrderList[secondId][1:]
 						tempCost, tempAsignedOrders = tryOrderCombo(sortedOrderList)

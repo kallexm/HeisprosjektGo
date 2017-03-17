@@ -65,7 +65,7 @@ type Elev struct{
 	CurentInternalOrders []Id_t 
 }
 
-func (elev Elev) changePosition(position Position) Elev{
+func (elev Elev) ChangePosition(position Position) Elev{
 	elev.CurentPosition = position
 	return elev
 	
@@ -126,6 +126,9 @@ func AddOrder(newOrder Order) bool{
 		if areOrdersEqual(newOrder,order) {
 			return false
 		}
+	}
+	if len(newOrder.Cost) == 0{
+		newOrder.Cost = map[Id_t]int{}
 	} 
 	orders = append(orders,newOrder)
 	if newOrder.OrderType == Command{
@@ -187,7 +190,7 @@ func GetOrderIdNr() int{
 
 
 func ChangeElevatorPosition(id int, position Position){
-	elevators[Id_t(id)] = elevators[Id_t(id)].changePosition(position)
+	elevators[Id_t(id)] = elevators[Id_t(id)].ChangePosition(position)
 }
 
 
